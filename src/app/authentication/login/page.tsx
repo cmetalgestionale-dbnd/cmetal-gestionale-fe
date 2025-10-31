@@ -1,9 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Grid, Box, Card, Stack, Typography } from "@mui/material";
+import { Grid, Box, Card, Typography, CircularProgress } from "@mui/material";
 import PageContainer from "@/app/(DashboardLayout)/components/container/PageContainer";
 import Logo from "@/app/(DashboardLayout)/layout/shared/logo/Logo";
 import AuthLogin from "../auth/AuthLogin";
@@ -11,33 +10,41 @@ import AuthLogin from "../auth/AuthLogin";
 const Login2 = () => {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-const handleLogin = async (username: string, password: string) => {
-  setError(null);
-  try {
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+  const handleLogin = async (username: string, password: string) => {
+    setError(null);
+    setLoading(true);
 
-    const res = await fetch(`${backendUrl}/auth/login`, {
-      method: "POST",
-      body: JSON.stringify({ username, password }),
-      headers: { "Content-Type": "application/json" },
-      credentials: "include", // <-- NECESSARIO per inviare e ricevere cookie
-    });
+    try {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+      const res = await fetch(`${backendUrl}/auth/login`, {
+        method: "POST",
+        body: JSON.stringify({ username, password }),
+        headers: { "Content-Type": "application/json" },
+        credentials: "include", // necessario per cookie JWT HttpOnly
+      });
 
-    if (!res.ok) {
-      const data = await res.json();
-      throw new Error(data.error || "Invalid username or password");
+      if (!res.ok) {
+        let message = "Credenziali non valide";
+        try {
+          const data = await res.json();
+          message = data.error || message;
+        } catch (_) {}
+        throw new Error(message);
+      }
+
+      // Lascio al middleware la gestione dei redirect in base al ruolo
+      router.replace("/");
+    } catch (e: any) {
+      setError(e.message || "Errore di connessione");
+    } finally {
+      setLoading(false);
     }
-
-    router.replace("/private/admin/comande");
-  } catch (e: any) {
-    setError(e.message);
-  }
-};
-
+  };
 
   return (
-    <PageContainer title="Login" description="this is Login page">
+    <PageContainer title="Login" description="Pagina di accesso">
       <Box
         sx={{
           position: "relative",
@@ -49,7 +56,7 @@ const handleLogin = async (username: string, password: string) => {
             position: "absolute",
             height: "100%",
             width: "100%",
-            opacity: "0.3",
+            opacity: 0.3,
           },
         }}
       >
@@ -61,32 +68,25 @@ const handleLogin = async (username: string, password: string) => {
             size={{ xs: 12, sm: 12, lg: 4, xl: 3 }}
           >
             <Card elevation={9} sx={{ p: 4, zIndex: 1, width: "100%", maxWidth: "500px" }}>
-              <Box display="flex" alignItems="center" justifyContent="center">
+              <Box display="flex" alignItems="center" justifyContent="center" mb={2}>
                 <Logo />
               </Box>
+
               <AuthLogin
                 onSubmit={handleLogin}
                 subtext={
                   <Typography variant="subtitle1" textAlign="center" color="textSecondary" mb={1}>
-                    
+                    Inserisci le tue credenziali per accedere
                   </Typography>
                 }
-                // subtitle={
-                //   <Stack direction="row" spacing={1} justifyContent="center" mt={3}>
-                //     <Typography color="textSecondary" variant="h6" fontWeight="500">
-                //       New to Modernize?
-                //     </Typography>
-                //     <Typography
-                //       component={Link}
-                //       href="/authentication/register"
-                //       fontWeight="500"
-                //       sx={{ textDecoration: "none", color: "primary.main" }}
-                //     >
-                //       Create an account
-                //     </Typography>
-                //   </Stack>
-                // }
               />
+
+              {loading && (
+                <Box textAlign="center" mt={2}>
+                  <CircularProgress size={26} />
+                </Box>
+              )}
+
               {error && (
                 <Typography color="error" textAlign="center" mt={2}>
                   {error}

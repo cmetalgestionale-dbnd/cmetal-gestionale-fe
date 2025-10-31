@@ -8,12 +8,16 @@ export async function middleware(request: NextRequest) {
   const isPrivate = url.pathname.startsWith('/private');
   const isRoot = url.pathname === '/' || url.pathname === '';
   const isLanding = url.pathname.startsWith('/landing');
+  const isAuth = url.pathname.startsWith('/authentication');
 
-  if (isLanding) return NextResponse.next();
+  // Accesso libero a landing e autenticazione
+  if (isLanding || isAuth) return NextResponse.next();
 
+  // Nessun token
   if (!token) {
-    if (isRoot) return NextResponse.redirect(new URL('/landing', request.url));
-    if (isPrivate) return NextResponse.redirect(new URL('/authentication/login', request.url));
+    if (isPrivate || isRoot) {
+      return NextResponse.redirect(new URL('/authentication/login', request.url));
+    }
     return NextResponse.next();
   }
 
@@ -23,33 +27,40 @@ export async function middleware(request: NextRequest) {
       new TextEncoder().encode(process.env.JWT_SECRET as string)
     );
 
-    // 🔹 estrai ruolo come stringa sicura
-    const ruoloRaw = (payload as Record<string, any>)?.role || (payload as Record<string, any>)?.ruolo;
-    const ruolo = typeof ruoloRaw === 'string' ? ruoloRaw.toLowerCase() : '';
+    // Estrai e normalizza ruolo
+    const ruoloRaw =
+      (payload as Record<string, any>)?.role ||
+      (payload as Record<string, any>)?.ruolo;
+    const ruolo = typeof ruoloRaw === 'string' ? ruoloRaw.toUpperCase() : '';
 
-    if (ruolo === 'client' && isPrivate) {
-      return NextResponse.redirect(new URL('/authentication/login', request.url));
+    // Routing in base al ruolo
+    if (isRoot) {
+      if (ruolo === 'ADMIN') {
+        return NextResponse.redirect(new URL('/private/admin/impostazioni', request.url));
+      }
+      if (ruolo === 'SUPERVISORE') {
+        return NextResponse.redirect(new URL('/private/admin/impostazioni', request.url));
+      }
+      if (ruolo === 'DIPENDENTE') {
+        return NextResponse.redirect(new URL('/private/admin/impostazioni', request.url));
+      }
     }
 
-    if (ruolo === 'client' && isRoot) {
-      return NextResponse.redirect(new URL('/landing', request.url));
+    // Se è un utente con ruolo valido → può navigare
+    if (['ADMIN', 'SUPERVISORE', 'DIPENDENTE'].includes(ruolo)) {
+      return NextResponse.next();
     }
 
-    if ((ruolo === 'admin' || ruolo === 'dipen') && isRoot) {
-      return NextResponse.redirect(new URL('/private/admin/comande', request.url));
-    }
-
-    return NextResponse.next();
-
+    // Ruolo non riconosciuto → logout forzato
+    return NextResponse.redirect(new URL('/authentication/login', request.url));
   } catch (err) {
-    console.error('Errore verifica token:', err);
-    if (isPrivate) return NextResponse.redirect(new URL('/authentication/login', request.url));
-    return NextResponse.redirect(new URL('/landing', request.url));
+    console.error('❌ Errore verifica token:', err);
+    return NextResponse.redirect(new URL('/authentication/login', request.url));
   }
 }
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|authentication|landing|tavoli|api/public|.*\\.(?:png|jpg|jpeg|gif|svg|webp|ico|txt|pdf)).*)',
+    '/((?!_next/static|_next/image|favicon.ico|authentication|landing|api/public|.*\\.(?:png|jpg|jpeg|gif|svg|webp|ico|txt|pdf)).*)',
   ],
 };
