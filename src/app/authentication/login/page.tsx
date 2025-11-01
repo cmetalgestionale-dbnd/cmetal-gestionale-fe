@@ -33,9 +33,6 @@ const Login2 = () => {
         } catch (_) {}
         throw new Error(message);
       }
-
-      // Lascio al middleware la gestione dei redirect in base al ruolo
-      router.replace("/");
     } catch (e: any) {
       setError(e.message || "Errore di connessione");
     } finally {
