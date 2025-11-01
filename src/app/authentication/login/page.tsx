@@ -1,14 +1,12 @@
 "use client";
 
 import React, { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Grid, Box, Card, Typography, CircularProgress } from "@mui/material";
 import PageContainer from "@/app/(DashboardLayout)/components/container/PageContainer";
 import Logo from "@/app/(DashboardLayout)/layout/shared/logo/Logo";
 import AuthLogin from "../auth/AuthLogin";
 
 const Login2 = () => {
-  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -33,14 +31,17 @@ const Login2 = () => {
         } catch (_) {}
         throw new Error(message);
       }
-      router.push("/");
+
+      // ✅ Se login OK → forza redirect su dominio di produzione
+      window.location.href = "https://app.castellanometal.com/";
+
     } catch (e: any) {
       setError(e.message || "Errore di connessione");
     } finally {
       setLoading(false);
     }
   };
-  
+
   return (
     <PageContainer title="Login" description="Pagina di accesso">
       <Box
