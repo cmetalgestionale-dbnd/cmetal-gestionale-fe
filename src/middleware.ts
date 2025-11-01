@@ -10,6 +10,20 @@ export async function middleware(request: NextRequest) {
   const isLanding = url.pathname.startsWith('/landing');
   const isAuth = url.pathname.startsWith('/authentication');
 
+  // 🔹 Se l’utente è già autenticato e prova ad andare su /authentication → redireziona alla home
+  if (isAuth && request.cookies.get('token')?.value) {
+    try {
+      await jwtVerify(
+        request.cookies.get('token')!.value,
+        new TextEncoder().encode(process.env.JWT_SECRET as string)
+      );
+      return NextResponse.redirect(new URL('/', request.url));
+    } catch (_) {
+      // se il token non è valido, prosegui normalmente
+    }
+  }
+
+
   // Accesso libero a landing e autenticazione
   if (isLanding || isAuth) return NextResponse.next();
 
