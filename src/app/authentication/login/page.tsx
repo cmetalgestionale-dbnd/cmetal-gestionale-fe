@@ -33,13 +33,14 @@ const Login2 = () => {
         } catch (_) {}
         throw new Error(message);
       }
+      router.push("/");
     } catch (e: any) {
       setError(e.message || "Errore di connessione");
     } finally {
       setLoading(false);
     }
   };
-
+  
   return (
     <PageContainer title="Login" description="Pagina di accesso">
       <Box
