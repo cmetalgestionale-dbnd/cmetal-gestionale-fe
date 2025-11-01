@@ -12,17 +12,19 @@ const Login2 = () => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+
   const handleLogin = async (username: string, password: string) => {
     setError(null);
     setLoading(true);
 
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+      // 🔹 1. Login
       const res = await fetch(`${backendUrl}/auth/login`, {
         method: "POST",
         body: JSON.stringify({ username, password }),
         headers: { "Content-Type": "application/json" },
-        credentials: "include", // necessario per cookie JWT HttpOnly
+        credentials: "include",
       });
 
       if (!res.ok) {
@@ -34,8 +36,20 @@ const Login2 = () => {
         throw new Error(message);
       }
 
-      // Lascio al middleware la gestione dei redirect in base al ruolo
-      router.replace("/");
+      // 🔹 2. Verifica che il cookie sia effettivamente disponibile
+      const me = await fetch(`${backendUrl}/auth/me`, {
+        method: "GET",
+        credentials: "include",
+      });
+
+      if (me.ok) {
+        // ✅ Il cookie è sincronizzato: forziamo il redirect
+        router.replace("/");
+        // Optional ma consigliato per evitare cache o race:
+        window.location.reload();
+      } else {
+        throw new Error("Accesso non valido, riprova.");
+      }
     } catch (e: any) {
       setError(e.message || "Errore di connessione");
     } finally {
