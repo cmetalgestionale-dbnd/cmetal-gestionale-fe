@@ -1,11 +1,13 @@
 import {
   IconLayoutDashboard,
-  IconSticker2,
   IconSettings,
   IconGraph,
   IconUser,
-  IconChefHat
+  IconBriefcase2,
+  IconHammer
 } from "@tabler/icons-react";
+
+
 
 import { uniqueId } from "lodash";
 
@@ -17,9 +19,9 @@ const Menuitems = [
 
   {
     id: uniqueId(),
-    title: "Comande",
+    title: "Assegnazioni",
     icon: IconLayoutDashboard,
-    href: "/private/admin/comande",
+    href: "/private/admin/assegnazioni",
   },
   {
     navlabel: true,
@@ -27,15 +29,15 @@ const Menuitems = [
   },
   {
     id: uniqueId(),
-    title: "Gestione Tavoli",
-    icon: IconSticker2,
-    href: "/private/admin/tavoli",
+    title: "Gestione Commesse",
+    icon: IconHammer,
+    href: "/private/admin/commesse",
   },
   {
     id: uniqueId(),
-    title: "Gestione Prodotti",
-    icon: IconChefHat,
-    href: "/private/admin/prodotti",
+    title: "Gestione Clienti",
+    icon: IconBriefcase2,
+    href: "/private/admin/clienti",
   },
   {
     navlabel: true,

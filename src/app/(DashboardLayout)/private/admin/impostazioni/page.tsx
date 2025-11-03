@@ -60,9 +60,6 @@ const Utenze = () => {
 
   return (
     <PageContainer title="Gestione Utenze" description="Gestione Utenze">
-      <Box mb={2}>
-        <Typography variant="subtitle2">Ruolo utente: {role}</Typography>
-      </Box>
       <Grid container spacing={3}>
         <Grid>
           <SettingsComponent />

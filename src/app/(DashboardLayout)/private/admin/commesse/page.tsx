@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { Grid, Box, Typography } from '@mui/material';
 import PageContainer from '@/app/(DashboardLayout)/components/container/PageContainer';
-import UserManagement from '@/app/(DashboardLayout)/components/utenze/UserManagement';
+import ClientManagement from '@/app/(DashboardLayout)/components/clienti/ClientManagement';
+import CommessaManagement from '@/app/(DashboardLayout)/components/commesse/CommessaManagement';
 
 const Utenze = () => {
   const [role, setRole] = useState<string | null>(null);
@@ -62,7 +63,7 @@ const Utenze = () => {
     <PageContainer title="Gestione Utenze" description="Gestione Utenze">
       <Grid container spacing={3}>
         <Grid>
-          <UserManagement />
+          <CommessaManagement />
         </Grid>
       </Grid>
     </PageContainer>

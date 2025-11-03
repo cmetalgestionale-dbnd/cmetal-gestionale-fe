@@ -68,7 +68,7 @@ export async function middleware(request: NextRequest) {
     // Ruolo non riconosciuto → logout forzato
     return NextResponse.redirect(new URL('/authentication/login', request.url));
   } catch (err) {
-    console.error('❌ Errore verifica token:', err);
+    console.error('Errore verifica token:', err);
     return NextResponse.redirect(new URL('/authentication/login', request.url));
   }
 }

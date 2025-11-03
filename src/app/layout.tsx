@@ -11,7 +11,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="it-IT">
       <Head>
-        {/* Lasciamo lo zoom disponibile */}
         <meta
           name="viewport"
           content="width=device-width, initial-scale=1"

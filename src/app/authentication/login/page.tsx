@@ -32,8 +32,8 @@ const Login2 = () => {
         throw new Error(message);
       }
 
-      // ✅ Se login OK → forza redirect su dominio di produzione
-      window.location.href = "https://app.castellanometal.com/";
+      // ✅ Se login OK → forza redirect
+      window.location.href = "/";
 
     } catch (e: any) {
       setError(e.message || "Errore di connessione");

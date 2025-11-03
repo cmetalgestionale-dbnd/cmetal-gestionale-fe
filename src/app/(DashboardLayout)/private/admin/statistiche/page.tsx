@@ -68,12 +68,10 @@ const Dashboard = () => {
 
   const renderMain = () => (
     <Box mt={4}>
-      <Typography variant="h5" mb={3}>Gestione Statistiche</Typography>
+      <Typography variant="h5" mb={3}>Statistiche</Typography>
       <Stack spacing={2} direction={{ xs: 'column', sm: 'row' }}>
         <Button variant="contained" onClick={() => setActiveView('grafici')}>Visualizza grafici</Button>
-        <Button variant="contained" onClick={() => setActiveView('gestisci')}>Gestisci costo prodotto</Button>
-        <Button variant="contained" onClick={() => setActiveView('pdf')}>Stampa PDF prodotti usati</Button>
-        <Button variant="contained" onClick={() => setActiveView('scontrini')}>Visualizza tutti gli scontrini</Button>
+        <Button variant="contained" onClick={() => setActiveView('gestisci')}>Genera report commesse</Button>
       </Stack>
     </Box>
   );
