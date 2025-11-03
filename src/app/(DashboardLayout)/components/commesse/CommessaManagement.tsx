@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 import React, { useEffect, useState } from 'react';
 import {
@@ -22,10 +22,15 @@ interface Commessa {
 
 const CommessaManagement = () => {
   const [commesse, setCommesse] = useState<Commessa[]>([]);
+  const [deletedCommesse, setDeletedCommesse] = useState<Commessa[]>([]);
   const [open, setOpen] = useState(false);
   const [editingCommessa, setEditingCommessa] = useState<Commessa | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [removeFileConfirm, setRemoveFileConfirm] = useState(false);
+
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [commessaToDelete, setCommessaToDelete] = useState<Commessa | null>(null);
+  const [deletedOpen, setDeletedOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     codice: '',
@@ -39,6 +44,7 @@ const CommessaManagement = () => {
     const res = await fetch(`${backendUrl}/api/commesse`, { credentials: 'include' });
     const data: Commessa[] = await res.json();
     setCommesse(data.filter(c => !c.isDeleted));
+    setDeletedCommesse(data.filter(c => c.isDeleted));
   };
 
   useEffect(() => {
@@ -58,6 +64,7 @@ const CommessaManagement = () => {
       setFormData({ codice: '', descrizione: '', dataCreazione: '' });
     }
     setFile(null);
+    setRemoveFileConfirm(false);
     setOpen(true);
   };
 
@@ -65,6 +72,7 @@ const CommessaManagement = () => {
     setOpen(false);
     setEditingCommessa(null);
     setFile(null);
+    setRemoveFileConfirm(false);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -78,6 +86,10 @@ const CommessaManagement = () => {
     }
   };
 
+  const handleRemoveFile = () => {
+    setRemoveFileConfirm(true);
+  };
+
   const handleSubmit = async () => {
     const form = new FormData();
     form.append('commessa', new Blob([JSON.stringify(formData)], { type: 'application/json' }));
@@ -87,7 +99,6 @@ const CommessaManagement = () => {
     const url = editingCommessa
       ? `${backendUrl}/api/commesse/${editingCommessa.id}`
       : `${backendUrl}/api/commesse`;
-
     const method = editingCommessa ? 'PUT' : 'POST';
 
     await fetch(url, { method, body: form, credentials: 'include' });
@@ -95,14 +106,35 @@ const CommessaManagement = () => {
     fetchCommesse();
   };
 
-  const handleRemoveFile = () => {
-    setRemoveFileConfirm(true);
+  const handleDeleteClick = (c: Commessa) => {
+    setCommessaToDelete(c);
+    setConfirmDeleteOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!commessaToDelete) return;
+    await fetch(`${backendUrl}/api/commesse/${commessaToDelete.id}`, {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+    setConfirmDeleteOpen(false);
+    setCommessaToDelete(null);
+    fetchCommesse();
+  };
+
+  const handleRestore = async (c: Commessa) => {
+    await fetch(`${backendUrl}/api/commesse/${c.id}/restore`, {
+      method: 'PUT',
+      credentials: 'include',
+    });
+    fetchCommesse();
   };
 
   return (
     <Paper elevation={3} sx={{ p: 3, borderRadius: 3 }}>
       <Typography variant="h5" mb={3} fontWeight={600}>Commesse</Typography>
       <Button variant="contained" size="small" onClick={() => handleOpenForm()} sx={{ mb: 2 }}>Aggiungi Commessa</Button>
+      <Button variant="outlined" size="small" sx={{ ml: 2, mb: 2 }} onClick={() => setDeletedOpen(true)}>Commesse cancellate</Button>
 
       <TableContainer>
         <Table>
@@ -120,11 +152,11 @@ const CommessaManagement = () => {
                 <TableCell>{c.codice}</TableCell>
                 <TableCell>{c.descrizione}</TableCell>
                 <TableCell>
-                  {c.pdfAllegato ? <a href={`${backendUrl}/api/commesse/${c.id}/allegato/url`} target="_blank">PDF</a> : '-'}
+                  {c.pdfAllegato ? <a href={`${backendUrl}/api/commesse/${c.id}/allegato`} target="_blank" rel="noopener noreferrer">PDF</a> : '-'}
                 </TableCell>
                 <TableCell>
                   <IconButton size="small" onClick={() => handleOpenForm(c)}><Edit fontSize="small" /></IconButton>
-                  <IconButton size="small">{/* eventualmente Delete */}<Delete fontSize="small" /></IconButton>
+                  <IconButton size="small" onClick={() => handleDeleteClick(c)}><Delete fontSize="small" /></IconButton>
                 </TableCell>
               </TableRow>
             ))}
@@ -138,7 +170,6 @@ const CommessaManagement = () => {
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
           <TextField label="Codice" name="codice" value={formData.codice} onChange={handleChange} size="small" fullWidth />
           <TextField label="Descrizione" name="descrizione" value={formData.descrizione} onChange={handleChange} size="small" fullWidth />
-          <TextField label="Data Creazione" name="dataCreazione" type="date" value={formData.dataCreazione} onChange={handleChange} size="small" fullWidth InputLabelProps={{ shrink: true }} />
           <input type="file" accept="application/pdf" onChange={handleFileChange} />
           {editingCommessa?.pdfAllegato && !removeFileConfirm && (
             <Box>
@@ -150,6 +181,48 @@ const CommessaManagement = () => {
         <DialogActions>
           <Button onClick={handleCloseForm} size="small">Annulla</Button>
           <Button onClick={handleSubmit} size="small" variant="contained">Salva</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Conferma eliminazione */}
+      <Dialog open={confirmDeleteOpen} onClose={() => setConfirmDeleteOpen(false)}>
+        <DialogTitle>Conferma Eliminazione</DialogTitle>
+        <DialogContent>
+          Sei sicuro di voler eliminare <strong>{commessaToDelete?.codice}</strong>?
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmDeleteOpen(false)} size="small">Annulla</Button>
+          <Button onClick={handleConfirmDelete} size="small" color="error" variant="contained">Elimina</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Modale commesse cancellate */}
+      <Dialog open={deletedOpen} onClose={() => setDeletedOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>Commesse Cancellate</DialogTitle>
+        <DialogContent>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Codice</TableCell>
+                <TableCell>Descrizione</TableCell>
+                <TableCell>Azioni</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {deletedCommesse.map(c => (
+                <TableRow key={c.id}>
+                  <TableCell>{c.codice}</TableCell>
+                  <TableCell>{c.descrizione}</TableCell>
+                  <TableCell>
+                    <Button size="small" onClick={() => handleRestore(c)}>Ripristina</Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeletedOpen(false)}>Chiudi</Button>
         </DialogActions>
       </Dialog>
     </Paper>
