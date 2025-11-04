@@ -6,7 +6,7 @@ import {
   TableBody, IconButton, Button, TableContainer, TextField,
   Dialog, DialogTitle, DialogContent, DialogActions
 } from '@mui/material';
-import { Delete, Edit } from '@mui/icons-material';
+import { Delete, Edit, Search } from '@mui/icons-material';
 
 interface Commessa {
   id: number;
@@ -27,7 +27,6 @@ const CommessaManagement = () => {
   const [editingCommessa, setEditingCommessa] = useState<Commessa | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [removeFileConfirm, setRemoveFileConfirm] = useState(false);
-
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [commessaToDelete, setCommessaToDelete] = useState<Commessa | null>(null);
   const [deletedOpen, setDeletedOpen] = useState(false);
@@ -37,6 +36,8 @@ const CommessaManagement = () => {
     descrizione: '',
     dataCreazione: ''
   });
+
+  const [searchTerm, setSearchTerm] = useState(''); // 👈 nuovo stato per la ricerca
 
   const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
 
@@ -130,11 +131,38 @@ const CommessaManagement = () => {
     fetchCommesse();
   };
 
+  // 🔎 Filtra commesse in base al codice cercato
+  const filteredCommesse = commesse.filter(c =>
+    c.codice.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <Paper elevation={3} sx={{ p: 3, borderRadius: 3 }}>
       <Typography variant="h5" mb={3} fontWeight={600}>Commesse</Typography>
-      <Button variant="contained" size="small" onClick={() => handleOpenForm()} sx={{ mb: 2 }}>Aggiungi Commessa</Button>
-      <Button variant="outlined" size="small" sx={{ ml: 2, mb: 2 }} onClick={() => setDeletedOpen(true)}>Commesse cancellate</Button>
+
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+        <Button variant="contained" size="small" onClick={() => handleOpenForm()}>
+          Aggiungi Commessa
+        </Button>
+        <Button
+          variant="outlined"
+          size="small"
+          onClick={() => setDeletedOpen(true)}
+        >
+          Commesse cancellate
+        </Button>
+
+        {/* 🔍 Campo ricerca */}
+        <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Search fontSize="small" />
+          <TextField
+            label="Cerca per codice"
+            size="small"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </Box>
+      </Box>
 
       <TableContainer>
         <Table>
@@ -147,16 +175,28 @@ const CommessaManagement = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {commesse.map(c => (
+            {filteredCommesse.map(c => (
               <TableRow key={c.id}>
                 <TableCell>{c.codice}</TableCell>
                 <TableCell>{c.descrizione}</TableCell>
                 <TableCell>
-                  {c.pdfAllegato ? <a href={`${backendUrl}/api/commesse/${c.id}/allegato`} target="_blank" rel="noopener noreferrer">PDF</a> : '-'}
+                  {c.pdfAllegato ? (
+                    <a
+                      href={`${backendUrl}/api/commesse/${c.id}/allegato`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      PDF
+                    </a>
+                  ) : '-'}
                 </TableCell>
                 <TableCell>
-                  <IconButton size="small" onClick={() => handleOpenForm(c)}><Edit fontSize="small" /></IconButton>
-                  <IconButton size="small" onClick={() => handleDeleteClick(c)}><Delete fontSize="small" /></IconButton>
+                  <IconButton size="small" onClick={() => handleOpenForm(c)}>
+                    <Edit fontSize="small" />
+                  </IconButton>
+                  <IconButton size="small" onClick={() => handleDeleteClick(c)}>
+                    <Delete fontSize="small" />
+                  </IconButton>
                 </TableCell>
               </TableRow>
             ))}

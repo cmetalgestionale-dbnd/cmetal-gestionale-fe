@@ -18,9 +18,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Switch,
 } from '@mui/material';
-import { Delete, Edit } from '@mui/icons-material';
+import { Delete, Edit, Search } from '@mui/icons-material';
 
 interface Cliente {
   id: number;
@@ -41,6 +40,7 @@ const ClientManagement = ({ readOnly = false }: { readOnly?: boolean }) => {
   const [deletedOpen, setDeletedOpen] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [clienteToDelete, setClienteToDelete] = useState<Cliente | null>(null);
+  const [searchTerm, setSearchTerm] = useState(''); // 🔍 nuovo stato per ricerca
 
   const [formData, setFormData] = useState({
     nome: '',
@@ -55,12 +55,8 @@ const ClientManagement = ({ readOnly = false }: { readOnly?: boolean }) => {
   const fetchClienti = async () => {
     const res = await fetch(`${backendUrl}/api/clienti`, { credentials: 'include' });
     const data: Cliente[] = await res.json();
-
-    const active = data.filter(c => !c.isDeleted);
-    setClienti(active);
-
-    const deleted = data.filter(c => c.isDeleted);
-    setDeletedClienti(deleted);
+    setClienti(data.filter(c => !c.isDeleted));
+    setDeletedClienti(data.filter(c => c.isDeleted));
   };
 
   useEffect(() => {
@@ -161,22 +157,44 @@ const ClientManagement = ({ readOnly = false }: { readOnly?: boolean }) => {
     setDeletedOpen(false);
   };
 
+  // 🔎 Filtraggio clienti per nome
+  const filteredClienti = clienti.filter(c =>
+    c.nome.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <Paper elevation={3} sx={{ p: 3, borderRadius: 3 }}>
       <Typography variant="h5" mb={3} fontWeight={600}>
         Clienti
       </Typography>
 
-      {!readOnly && (
-        <>
-          <Button variant="contained" size="small" onClick={() => handleOpenForm()} sx={{ mb: 2 }}>
-            Aggiungi Cliente
-          </Button>
-          <Button variant="outlined" size="small" sx={{ ml: 2, mb: 2 }} onClick={() => setDeletedOpen(true)}>
-            Clienti cancellati
-          </Button>
-        </>
-      )}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+        {!readOnly && (
+          <>
+            <Button variant="contained" size="small" onClick={() => handleOpenForm()}>
+              Aggiungi Cliente
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => setDeletedOpen(true)}
+            >
+              Clienti cancellati
+            </Button>
+          </>
+        )}
+
+        {/* 🔍 Campo ricerca */}
+        <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Search fontSize="small" />
+          <TextField
+            label="Cerca per nome"
+            size="small"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </Box>
+      </Box>
 
       <TableContainer>
         <Table>
@@ -191,7 +209,7 @@ const ClientManagement = ({ readOnly = false }: { readOnly?: boolean }) => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {clienti.map((c) => (
+            {filteredClienti.map((c) => (
               <TableRow key={c.id}>
                 <TableCell>{c.nome}</TableCell>
                 <TableCell>{c.riferimento}</TableCell>

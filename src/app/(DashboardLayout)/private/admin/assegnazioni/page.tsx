@@ -1,23 +1,11 @@
-'use client';
-import { Paper, Grid, Box, Typography } from '@mui/material';
-import PageContainer from '@/app/(DashboardLayout)/components/container/PageContainer';
-import { createTheme, ThemeProvider, styled } from '@mui/material/styles';
-import TavoloManagementForm from '@/app/(DashboardLayout)/components/tavoli/TavoloManagementForm';
+'use client'
+
 import { useEffect, useState } from 'react';
+import { Grid, Box, Typography } from '@mui/material';
+import PageContainer from '@/app/(DashboardLayout)/components/container/PageContainer';
+import AssegnazioniPage from '@/app/(DashboardLayout)/components/assegnazioni/AssegnazioniPage';
 
-
-const Item = styled(Paper)(({ theme }) => ({
-  ...theme.typography.body1,
-  textAlign: 'center',
-  color: theme.palette.text.secondary,
-  height: 60,
-  lineHeight: '60px',
-}));
-
-const darkTheme = createTheme({ palette: { mode: 'dark' } });
-const lightTheme = createTheme({ palette: { mode: 'light' } });
-
-const Shadow = () => {
+const Utenze = () => {
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -58,7 +46,7 @@ const Shadow = () => {
   }
 
   // Se non sei admin → accesso negato
-  if (role !== 'ADMIN') {
+  if (role !== 'ADMIN' && role !== 'SUPERVISORE' && role !== 'DIPENDENTE') {
     return (
       <PageContainer title="Accesso Negato" description="">
         <Box p={2}>
@@ -71,12 +59,14 @@ const Shadow = () => {
   }
 
   return (
-    <PageContainer title="Gestione Tavoli" description="Gestione Tavoli">
-      <Grid size={12}>
-        <TavoloManagementForm />
+    <PageContainer title="Gestione Utenze" description="Gestione Utenze">
+      <Grid container spacing={3}>
+        <Grid>
+          <AssegnazioniPage />
+        </Grid>
       </Grid>
     </PageContainer>
   );
 };
 
-export default Shadow;
+export default Utenze;
