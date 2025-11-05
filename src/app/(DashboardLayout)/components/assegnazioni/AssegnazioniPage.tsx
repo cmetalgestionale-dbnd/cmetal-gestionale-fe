@@ -271,7 +271,7 @@ const AssegnazioniPage = () => {
       {/* LISTA */}
       <Grid container spacing={2}>
         {assegnazioni.map(a => (
-          <Grid item xs={12} sm={6} md={4} key={a.id}>
+          <Grid size={{ xs: 12, sm: 6, md: 4 }} key={a.id}>
             <Card variant="outlined">
               <CardContent>
                 <Typography variant="subtitle1" fontWeight={600}>
@@ -429,7 +429,7 @@ const AssegnazioniPage = () => {
                   <IconButton
                     onClick={e => {
                       e.stopPropagation();
-                      window.open(`${backendUrl}/storage/${c.pdfAllegato.storagePath}`, '_blank');
+                      window.open(`${backendUrl}/storage/${c.pdfAllegato?.storagePath}`, '_blank');
                     }}
                   >
                     <PictureAsPdf fontSize="small" />
