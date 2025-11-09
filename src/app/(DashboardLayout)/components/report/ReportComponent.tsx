@@ -2,34 +2,25 @@
 
 import { useState } from 'react';
 import { Box, Button, TextField, IconButton, Typography } from '@mui/material';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DashboardCard from '@/app/(DashboardLayout)/components/shared/DashboardCard';
 
-interface Props {
-  onBack: () => void;
-}
-
-const StampaPdfProdottiUsati = ({ onBack }: Props) => {
+const StampaPdfAssegnazioni = () => {
   const [data, setData] = useState<string>('');
 
   const downloadPdf = () => {
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
     const url = data
-      ? `${backendUrl}/api/prodotti/utilizzati/pdf?data=${data}`
-      : `${backendUrl}/api/prodotti/utilizzati/pdf`;
+      ? `${backendUrl}/api/assegnazioni/report/pdf?data=${data}`
+      : `${backendUrl}/api/assegnazioni/report/pdf`;
 
     window.open(url, '_blank');
   }
 
   return (
     <DashboardCard>
-      {/* Header con tasto indietro */}
       <Box display="flex" alignItems="center" mb={2}>
-        <IconButton onClick={onBack} color="primary">
-          <ArrowBackIcon />
-        </IconButton>
         <Typography variant="h6" ml={1}>
-          Stampa PDF Prodotti Usati
+          Genera Report PDF Assegnazioni
         </Typography>
       </Box>
 
@@ -47,10 +38,10 @@ const StampaPdfProdottiUsati = ({ onBack }: Props) => {
       </Box>
 
       <Typography mt={2} variant="body2" color="textSecondary">
-        Se non selezioni una data, verrà generato il PDF per la giornata odierna o per la sera precedente se orario è prima delle 7:00.
+        Se non selezioni una data, verrà generato il PDF per la giornata odierna.
       </Typography>
     </DashboardCard>
   );
 }
 
-export default StampaPdfProdottiUsati;
+export default StampaPdfAssegnazioni;

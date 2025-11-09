@@ -376,7 +376,7 @@ const handleUploadFoto = async (id: number, file: File) => {
         >
           {dipendenti.map(d => (
             <MenuItem key={d.id} value={d.id}>
-              {d.nome}
+              {d.nome} {d.cognome}
             </MenuItem>
           ))}
         </TextField>

@@ -55,9 +55,9 @@ const Menuitems = [
   },
   {
     id: uniqueId(),
-    title: "Statistiche",
+    title: "Genera Report",
     icon: IconGraph,
-    href: "/private/admin/statistiche",
+    href: "/private/admin/report",
   },
   {
     id: uniqueId(),
