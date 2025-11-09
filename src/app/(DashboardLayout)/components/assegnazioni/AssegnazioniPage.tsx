@@ -17,6 +17,9 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Tooltip,
+  Snackbar,
+  Alert,
 } from '@mui/material';
 import {
   Add,
@@ -31,6 +34,7 @@ import {
 interface Utente {
   id: number;
   nome: string;
+  cognome?: string;
   ruolo: 'ADMIN' | 'SUPERVISORE' | 'DIPENDENTE';
 }
 
@@ -46,6 +50,12 @@ interface Cliente {
   nome: string;
 }
 
+interface Allegato {
+  id: number;
+  nomeFile: string;
+  storagePath: string;
+}
+
 interface Assegnazione {
   id: number;
   commessa: Commessa;
@@ -55,7 +65,7 @@ interface Assegnazione {
   assegnazioneAt: string;
   startAt?: string;
   endAt?: string;
-  fotoAllegato?: { id: number; nomeFile: string; storagePath: string };
+  fotoAllegato?: Allegato;
   note?: string;
   isDeleted?: boolean;
 }
@@ -86,43 +96,76 @@ const AssegnazioniPage = () => {
   const [searchCommessa, setSearchCommessa] = useState('');
   const [searchCliente, setSearchCliente] = useState('');
 
-  // caricamento iniziale
-  useEffect(() => {
-    const loadInitialData = async () => {
-      const userRes = await fetch(`${backendUrl}/auth/me`, { credentials: 'include' });
-      const userData = await userRes.json();
-      setUtenteCorrente(userData);
-      setRuolo(userData.role);
+  // delete confirm dialog
+  const [confirmDelete, setConfirmDelete] = useState<Assegnazione | null>(null);
+
+  // dialog conferma start/end
+  const [confirmAction, setConfirmAction] = useState<{ tipo: 'start' | 'end'; assegnazione: Assegnazione } | null>(null);
+
+  // snackbar feedback
+  const [snack, setSnack] = useState<{ open: boolean; message: string; severity?: 'success' | 'error' }>(
+    { open: false, message: '', severity: 'success' }
+  );
+
+useEffect(() => {
+  const loadInitialData = async () => {
+    // Recupera utente corrente
+    const userRes = await fetch(`${backendUrl}/auth/me`, { credentials: 'include' });
+    const userData = await userRes.json();
+    setUtenteCorrente(userData);
+    setRuolo(userData.role);
+
+    // Recupera solo dipendenti
+    const dipRes = await fetch(`${backendUrl}/api/utenti/dipendenti`, { credentials: 'include' });
+    const dipList: Utente[] = await dipRes.json();
+    setDipendenti(dipList);
+
+    // Setta selectedDipendente in base al ruolo
+    if (userData.role === 'ADMIN' || userData.role === 'SUPERVISORE') {
+      setSelectedDipendente(dipList.length > 0 ? dipList[0].id : null);
+    } else {
       setSelectedDipendente(userData.id);
+    }
+  };
+  loadInitialData();
+}, []);
 
-      const dipRes = await fetch(`${backendUrl}/api/utenti`, { credentials: 'include' });
-      setDipendenti(await dipRes.json());
-    };
-    loadInitialData();
-  }, []);
 
-  // carica assegnazioni
+  // carica assegnazioni (quando cambia utente o data)
   useEffect(() => {
     if (!selectedDipendente) return;
     const fetchData = async () => {
-      const res = await fetch(
-        `${backendUrl}/api/assegnazioni?utenteId=${selectedDipendente}&date=${selectedDate
-          .toISOString()
-          .split('T')[0]}`,
-        { credentials: 'include' }
-      );
-      setAssegnazioni(await res.json());
+      const dateParam = selectedDate.toISOString().split('T')[0];
+      const url = `${backendUrl}/api/assegnazioni?utenteId=${selectedDipendente}&date=${dateParam}`;
+
+      try {
+        const res = await fetch(url, { credentials: 'include' });
+        if (!res.ok) {
+          setSnack({ open: true, message: 'Errore nel recuperare le assegnazioni', severity: 'error' });
+          return;
+        }
+        const data = await res.json();
+        data.sort((a: Assegnazione, b: Assegnazione) => new Date(a.assegnazioneAt).getTime() - new Date(b.assegnazioneAt).getTime());
+        setAssegnazioni(data);
+      } catch (e) {
+        setSnack({ open: true, message: 'Errore di rete', severity: 'error' });
+      }
     };
+
     fetchData();
-  }, [selectedDipendente, selectedDate]);
+  }, [selectedDipendente, selectedDate, backendUrl]);
 
   // ricerca commesse/clienti
   const loadCommesse = async () => {
-    const res = await fetch(`${backendUrl}/api/commesse?search=${searchCommessa}`, { credentials: 'include' });
+    const res = await fetch(`${backendUrl}/api/commesse?search=${encodeURIComponent(searchCommessa)}`, {
+      credentials: 'include',
+    });
     setCommesse(await res.json());
   };
   const loadClienti = async () => {
-    const res = await fetch(`${backendUrl}/api/clienti?search=${searchCliente}`, { credentials: 'include' });
+    const res = await fetch(`${backendUrl}/api/clienti?search=${encodeURIComponent(searchCliente)}`, {
+      credentials: 'include',
+    });
     setClienti(await res.json());
   };
 
@@ -135,7 +178,10 @@ const AssegnazioniPage = () => {
 
   // stato assegnazione
   const getStatus = (a: Assegnazione) => {
-    if (a.endAt) return 'Completata';
+    if (a.endAt) {
+      const elapsed = a.startAt ? Math.floor((new Date(a.endAt).getTime() - new Date(a.startAt).getTime()) / 60000) : 0;
+      return `Completata (${elapsed} min)`;
+    }
     if (a.startAt) return 'In corso';
     return 'Non iniziata';
   };
@@ -146,32 +192,85 @@ const AssegnazioniPage = () => {
   };
 
   // azioni dipendente
-  const handleStart = async (id: number) => {
-    await fetch(`${backendUrl}/api/assegnazioni/${id}/start`, { method: 'PUT', credentials: 'include' });
-    setAssegnazioni(prev =>
-      prev.map(a => (a.id === id ? { ...a, startAt: new Date().toISOString() } : a))
-    );
+  const handleStart = async (a: Assegnazione) => {
+    const res = await fetch(`${backendUrl}/api/assegnazioni/${a.id}/start`, { method: 'PUT', credentials: 'include' });
+    if (!res.ok) {
+      setSnack({ open: true, message: 'Errore avviando l\'assegnazione', severity: 'error' });
+      return;
+    }
+    setAssegnazioni(prev => prev.map(x => (x.id === a.id ? { ...x, startAt: new Date().toISOString() } : x)));
+    setSnack({ open: true, message: 'Assegnazione avviata', severity: 'success' });
   };
 
-  const handleEnd = async (id: number) => {
-    await fetch(`${backendUrl}/api/assegnazioni/${id}/end`, { method: 'PUT', credentials: 'include' });
-    setAssegnazioni(prev =>
-      prev.map(a => (a.id === id ? { ...a, endAt: new Date().toISOString() } : a))
-    );
+  const handleEnd = async (a: Assegnazione) => {
+    if (!a.fotoAllegato) {
+      setSnack({ open: true, message: 'Devi caricare un allegato prima di terminare', severity: 'error' });
+      return;
+    }
+    const res = await fetch(`${backendUrl}/api/assegnazioni/${a.id}/end`, { method: 'PUT', credentials: 'include' });
+    if (!res.ok) {
+      setSnack({ open: true, message: 'Errore terminando l\'assegnazione', severity: 'error' });
+      return;
+    }
+    setAssegnazioni(prev => prev.map(x => (x.id === a.id ? { ...x, endAt: new Date().toISOString() } : x)));
+    setSnack({ open: true, message: 'Assegnazione terminata', severity: 'success' });
   };
 
-  const handleUploadFoto = async (id: number, file: File) => {
-    const fd = new FormData();
-    fd.append('file', file);
-    await fetch(`${backendUrl}/api/assegnazioni/${id}/upload-foto`, {
+const handleUploadFoto = async (id: number, file: File) => {
+  if (!file) return;
+
+  // VALIDAZIONE client-type
+  const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+  if (!allowed.includes(file.type)) {
+    setSnack({ open: true, message: "Il file deve essere un'immagine JPEG/PNG/WebP", severity: 'error' });
+    return;
+  }
+
+  // VALIDAZIONE client-size (1 MB)
+  if (file.size > 1024 * 1024) {
+    setSnack({ open: true, message: "La foto non può superare 1 MB", severity: 'error' });
+    return;
+  }
+
+  const fd = new FormData();
+  fd.append('file', file);
+
+  try {
+    const res = await fetch(`${backendUrl}/api/assegnazioni/${id}/upload-foto`, {
       method: 'POST',
       body: fd,
       credentials: 'include',
     });
-    alert('Foto caricata!');
-  };
 
-  // form gestione assegnazione
+    if (res.ok) {
+      setSnack({ open: true, message: 'Foto caricata!', severity: 'success' });
+      // rifetcha assegnazioni per aggiornare stato/fotoAllegato
+      if (selectedDipendente) {
+        const dateParam = selectedDate.toISOString().split('T')[0];
+        const url = `${backendUrl}/api/assegnazioni?utenteId=${selectedDipendente}&date=${dateParam}`;
+        const refetch = await fetch(url, { credentials: 'include' });
+        if (refetch.ok) {
+          const data = await refetch.json();
+          data.sort((a: Assegnazione, b: Assegnazione) => new Date(a.assegnazioneAt).getTime() - new Date(b.assegnazioneAt).getTime());
+          setAssegnazioni(data);
+        }
+      }
+    } else {
+      // prova a leggere il messaggio di errore dal body (es. IllegalArgumentException)
+      let text = 'Errore caricamento foto';
+      try {
+        text = await res.text();
+        if (!text) text = res.statusText || text;
+      } catch (e) { /* ignore */ }
+      setSnack({ open: true, message: text, severity: 'error' });
+    }
+  } catch (e) {
+    setSnack({ open: true, message: 'Errore di rete durante l\'upload', severity: 'error' });
+  }
+};
+
+
+  // gestione form
   const handleOpenForm = (a?: Assegnazione) => {
     if (a) {
       setEditing(a);
@@ -187,53 +286,78 @@ const AssegnazioniPage = () => {
     setOpenForm(true);
   };
 
- const handleSubmit = async () => {
-  if (!formData.commessa || !formData.cliente) {
-    alert('Seleziona commessa e cliente');
-    return;
-  }
-
-  const body = {
-    commessaId: formData.commessa.id,
-    clienteId: formData.cliente.id,
-    utenteId: selectedDipendente,
-    note: formData.note,
-    assegnazioneAt: selectedDate.toISOString(),
+  const handleDelete = async (id: number) => {
+    try {
+      const res = await fetch(`${backendUrl}/api/assegnazioni/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        setSnack({ open: true, message: 'Errore durante l\'eliminazione', severity: 'error' });
+        return;
+      }
+      setAssegnazioni(prev => prev.filter(a => a.id !== id));
+      setSnack({ open: true, message: 'Assegnazione eliminata', severity: 'success' });
+    } catch (e) {
+      setSnack({ open: true, message: 'Errore di rete', severity: 'error' });
+    }
   };
 
-  const method = editing ? 'PUT' : 'POST';
-  const url = editing
-    ? `${backendUrl}/api/assegnazioni/${editing.id}`
-    : `${backendUrl}/api/assegnazioni`;
+  const handleSubmit = async () => {
+    if (!formData.commessa || !formData.cliente) {
+      setSnack({ open: true, message: 'Seleziona commessa e cliente', severity: 'error' });
+      return;
+    }
 
-  await fetch(url, {
-    method,
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
+    const body: any = {
+      commessaId: formData.commessa.id,
+      clienteId: formData.cliente.id,
+      utenteId: selectedDipendente,
+      note: formData.note,
+      assegnazioneAt: selectedDate.toISOString(),
+    };
 
-  setOpenForm(false);
-  setEditing(null);
-  const refetch = await fetch(
-    `${backendUrl}/api/assegnazioni?utenteId=${selectedDipendente}&date=${selectedDate
-      .toISOString()
-      .split('T')[0]}`,
-    { credentials: 'include' }
-  );
-  setAssegnazioni(await refetch.json());
-};
+    const method = editing ? 'PUT' : 'POST';
+    const url = editing ? `${backendUrl}/api/assegnazioni/${editing.id}` : `${backendUrl}/api/assegnazioni`;
 
+    const res = await fetch(url, {
+      method,
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      setSnack({ open: true, message: 'Errore durante il salvataggio', severity: 'error' });
+      return;
+    }
+
+    setOpenForm(false);
+    setEditing(null);
+
+    if (selectedDipendente) {
+      const dateParam = selectedDate.toISOString().split('T')[0];
+      const refetchUrl = `${backendUrl}/api/assegnazioni?utenteId=${selectedDipendente}&date=${dateParam}`;
+
+      const refetch = await fetch(refetchUrl, { credentials: 'include' });
+      if (refetch.ok) {
+        const data = await refetch.json();
+        data.sort((a: Assegnazione, b: Assegnazione) => new Date(a.assegnazioneAt).getTime() - new Date(b.assegnazioneAt).getTime());
+        setAssegnazioni(data);
+        setSnack({ open: true, message: 'Assegnazione salvata', severity: 'success' });
+      }
+    }
+  };
 
   return (
     <Paper sx={{ p: 3, borderRadius: 3 }}>
       {/* HEADER */}
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} gap={2}>
         <TextField
           select
           label="Dipendente"
           size="small"
-          value={selectedDipendente || ''}
+          value={selectedDipendente ?? ''}
           onChange={e => setSelectedDipendente(Number(e.target.value))}
           disabled={ruolo === 'DIPENDENTE'}
           sx={{ width: 250 }}
@@ -283,47 +407,97 @@ const AssegnazioniPage = () => {
                 <Typography mt={2} color={statusColor(a)} fontWeight={600}>
                   {getStatus(a)}
                 </Typography>
+                {a.startAt && (
+                  <Typography variant="body2" color="text.secondary">
+                    Inizio: {new Date(a.startAt).toLocaleTimeString('it-IT')}
+                  </Typography>
+                )}
+                {a.endAt && (
+                  <Typography variant="body2" color="text.secondary">
+                    Fine: {new Date(a.endAt).toLocaleTimeString('it-IT')}
+                  </Typography>
+                )}
+                {a.fotoAllegato && !a.endAt && (
+                  <Typography variant="caption" color="text.secondary">
+                    Allegato caricato, puoi terminare
+                  </Typography>
+                )}
               </CardContent>
               <CardActions>
                 {ruolo === 'ADMIN' && (
                   <>
-                    <IconButton onClick={() => handleOpenForm(a)}>
-                      <Edit />
-                    </IconButton>
-                    <IconButton>
-                      <Delete />
-                    </IconButton>
+                    <Tooltip title="Modifica">
+                      <IconButton onClick={() => handleOpenForm(a)}>
+                        <Edit />
+                      </IconButton>
+                    </Tooltip>
+
+                    <Tooltip title="Elimina">
+                      <IconButton onClick={() => setConfirmDelete(a)}>
+                        <Delete />
+                      </IconButton>
+                    </Tooltip>
                   </>
                 )}
+
                 {ruolo === 'DIPENDENTE' && !a.startAt && (
-                  <Button size="small" onClick={() => handleStart(a.id)}>
+                  <Button size="small" onClick={() => setConfirmAction({ tipo: 'start', assegnazione: a })}>
                     Inizia
                   </Button>
                 )}
                 {ruolo === 'DIPENDENTE' && a.startAt && !a.endAt && (
-                  <Button size="small" onClick={() => handleEnd(a.id)}>
-                    Termina
-                  </Button>
+                  <>
+                    <IconButton
+                      component="label"
+                      disabled={!!a.fotoAllegato}
+                      title={a.fotoAllegato ? 'Foto già caricata' : 'Carica allegato prima di terminare'}
+                    >
+                      <PhotoCamera />
+                      <input
+                        type="file"
+                        hidden
+                        accept="image/*"
+                        onChange={e => e.target.files && handleUploadFoto(a.id, e.target.files[0])}
+                      />
+                    </IconButton>
+                    <Button
+                      size="small"
+                      onClick={() => setConfirmAction({ tipo: 'end', assegnazione: a })}
+                      disabled={!a.fotoAllegato}
+                    >
+                      Termina
+                    </Button>
+                  </>
                 )}
-                {a.commessa.pdfAllegato && (
-                  <IconButton
-                    onClick={() =>
-                      window.open(`${backendUrl}/storage/${a.commessa.pdfAllegato?.storagePath}`, '_blank')
-                    }
-                  >
-                    <PictureAsPdf />
-                  </IconButton>
+
+                {a.commessa.pdfAllegato ? (
+                  <Tooltip title="Apri PDF Commessa">
+                    <IconButton
+                      component="a"
+                      href={`${backendUrl}/api/commesse/${a.commessa.id}/allegato`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <PictureAsPdf />
+                    </IconButton>
+                  </Tooltip>
+                ) : (
+                  <Tooltip title="Nessun PDF">
+                    <PictureAsPdf sx={{ opacity: 0.3 }} />
+                  </Tooltip>
                 )}
-                {ruolo === 'DIPENDENTE' && a.endAt && (
-                  <IconButton component="label">
-                    <PhotoCamera />
-                    <input
-                      type="file"
-                      accept="image/*"
-                      hidden
-                      onChange={e => e.target.files && handleUploadFoto(a.id, e.target.files[0])}
-                    />
-                  </IconButton>
+
+                {ruolo === 'ADMIN' && a.fotoAllegato && a.endAt && (
+                  <Tooltip title="Visualizza foto allegata">
+                    <IconButton
+                      component="a"
+                      href={`${backendUrl}/api/assegnazioni/${a.id}/foto`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <PhotoCamera />
+                    </IconButton>
+                  </Tooltip>
                 )}
               </CardActions>
             </Card>
@@ -392,7 +566,7 @@ const AssegnazioniPage = () => {
         </DialogActions>
       </Dialog>
 
-      {/* MODALE SELEZIONA COMMESSA */}
+      {/* MODALI SELEZIONE COMMESSE/CLIENTI */}
       <Dialog open={openCommessaModal} onClose={() => setOpenCommessaModal(false)} fullWidth maxWidth="md">
         <DialogTitle>Seleziona Commessa</DialogTitle>
         <DialogContent>
@@ -429,7 +603,7 @@ const AssegnazioniPage = () => {
                   <IconButton
                     onClick={e => {
                       e.stopPropagation();
-                      window.open(`${backendUrl}/storage/${c.pdfAllegato?.storagePath}`, '_blank');
+                      window.open(`${backendUrl}/api/commesse/${c.id}/allegato`, '_blank');
                     }}
                   >
                     <PictureAsPdf fontSize="small" />
@@ -441,7 +615,6 @@ const AssegnazioniPage = () => {
         </DialogContent>
       </Dialog>
 
-      {/* MODALE SELEZIONA CLIENTE */}
       <Dialog open={openClienteModal} onClose={() => setOpenClienteModal(false)} fullWidth maxWidth="sm">
         <DialogTitle>Seleziona Cliente</DialogTitle>
         <DialogContent>
@@ -474,6 +647,68 @@ const AssegnazioniPage = () => {
           </Box>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog conferma eliminazione */}
+      <Dialog open={!!confirmDelete} onClose={() => setConfirmDelete(null)}>
+        <DialogTitle>Conferma eliminazione</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Vuoi davvero eliminare l'assegnazione <strong>{confirmDelete?.commessa.codice}</strong> per{' '}
+            <strong>{confirmDelete?.cliente.nome}</strong>?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmDelete(null)}>Annulla</Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={async () => {
+              if (!confirmDelete) return;
+              await handleDelete(confirmDelete.id);
+              setConfirmDelete(null);
+            }}
+          >
+            Elimina
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog conferma start/end */}
+      <Dialog open={!!confirmAction} onClose={() => setConfirmAction(null)}>
+        <DialogTitle>Conferma azione</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Vuoi davvero {confirmAction?.tipo === 'start' ? 'iniziare' : 'terminare'} l'assegnazione{' '}
+            <strong>{confirmAction?.assegnazione.commessa.codice}</strong>?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmAction(null)}>Annulla</Button>
+          <Button
+            variant="contained"
+            onClick={async () => {
+              if (!confirmAction) return;
+              if (confirmAction.tipo === 'start') await handleStart(confirmAction.assegnazione);
+              else await handleEnd(confirmAction.assegnazione);
+              setConfirmAction(null);
+            }}
+          >
+            Conferma
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Snackbar feedback */}
+      <Snackbar
+        open={snack.open}
+        autoHideDuration={4000}
+        onClose={() => setSnack(prev => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={() => setSnack(prev => ({ ...prev, open: false }))} severity={snack.severity} sx={{ width: '100%' }}>
+          {snack.message}
+        </Alert>
+      </Snackbar>
     </Paper>
   );
 };

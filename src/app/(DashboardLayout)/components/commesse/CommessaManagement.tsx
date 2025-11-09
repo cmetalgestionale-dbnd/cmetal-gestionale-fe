@@ -83,9 +83,26 @@ const CommessaManagement = () => {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      setFile(e.target.files[0]);
+      const selectedFile = e.target.files[0];
+
+      // Controllo tipo
+      if (selectedFile.type !== 'application/pdf') {
+        alert('Il file deve essere un PDF');
+        e.target.value = '';
+        return;
+      }
+
+      // Controllo dimensione 1MB
+      if (selectedFile.size > 1024 * 1024) {
+        alert('Il file non può superare 1 MB');
+        e.target.value = '';
+        return;
+      }
+
+      setFile(selectedFile);
     }
   };
+
 
   const handleRemoveFile = () => {
     setRemoveFileConfirm(true);
