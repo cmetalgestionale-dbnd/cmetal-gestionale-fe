@@ -30,6 +30,7 @@ import {
   PictureAsPdf,
   PhotoCamera,
 } from '@mui/icons-material';
+import imageCompression from 'browser-image-compression';
 
 interface Utente {
   id: number;
@@ -219,21 +220,42 @@ useEffect(() => {
 const handleUploadFoto = async (id: number, file: File) => {
   if (!file) return;
 
-  // VALIDAZIONE client-type
   const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
   if (!allowed.includes(file.type)) {
     setSnack({ open: true, message: "Il file deve essere un'immagine JPEG/PNG/WebP", severity: 'error' });
     return;
   }
 
-  // VALIDAZIONE client-size (1 MB)
-  if (file.size > 1024 * 1024) {
-    setSnack({ open: true, message: "La foto non può superare 1 MB", severity: 'error' });
-    return;
+  // Se il file supera 0.5MB → comprimi
+  const MAX_SIZE_MB = 0.5;
+
+  let fileToUpload = file;
+  if (file.size > MAX_SIZE_MB * 1024 * 1024) {
+    try {
+      const options = {
+        maxSizeMB: MAX_SIZE_MB,
+        maxWidthOrHeight: 1920, // riduce dimensione se serve
+        useWebWorker: true,
+        initialQuality: 0.7, // qualità iniziale
+      };
+      const compressed = await imageCompression(file, options);
+
+      if (compressed.size > MAX_SIZE_MB * 1024 * 1024) {
+        setSnack({ open: true, message: "Impossibile comprimere sotto 0.5MB, riduci la risoluzione", severity: 'error' });
+        return;
+      }
+
+      fileToUpload = new File([compressed], file.name, { type: file.type });
+      setSnack({ open: true, message: 'Foto compressa con successo', severity: 'success' });
+    } catch (e) {
+      console.error(e);
+      setSnack({ open: true, message: 'Errore durante la compressione', severity: 'error' });
+      return;
+    }
   }
 
   const fd = new FormData();
-  fd.append('file', file);
+  fd.append('file', fileToUpload);
 
   try {
     const res = await fetch(`${backendUrl}/api/assegnazioni/${id}/upload-foto`, {
@@ -244,28 +266,18 @@ const handleUploadFoto = async (id: number, file: File) => {
 
     if (res.ok) {
       setSnack({ open: true, message: 'Foto caricata!', severity: 'success' });
-      // rifetcha assegnazioni per aggiornare stato/fotoAllegato
-      if (selectedDipendente) {
-        const dateParam = selectedDate.toISOString().split('T')[0];
-        const url = `${backendUrl}/api/assegnazioni?utenteId=${selectedDipendente}&date=${dateParam}`;
-        const refetch = await fetch(url, { credentials: 'include' });
-        if (refetch.ok) {
-          const data = await refetch.json();
-          data.sort((a: Assegnazione, b: Assegnazione) => new Date(a.assegnazioneAt).getTime() - new Date(b.assegnazioneAt).getTime());
-          setAssegnazioni(data);
-        }
-      }
+      // rifetcha assegnazioni
+      const dateParam = selectedDate.toISOString().split('T')[0];
+      const url = `${backendUrl}/api/assegnazioni?utenteId=${selectedDipendente}&date=${dateParam}`;
+      const refetch = await fetch(url, { credentials: 'include' });
+      if (refetch.ok) setAssegnazioni(await refetch.json());
     } else {
-      // prova a leggere il messaggio di errore dal body (es. IllegalArgumentException)
       let text = 'Errore caricamento foto';
-      try {
-        text = await res.text();
-        if (!text) text = res.statusText || text;
-      } catch (e) { /* ignore */ }
+      try { text = await res.text() || res.statusText || text; } catch {}
       setSnack({ open: true, message: text, severity: 'error' });
     }
   } catch (e) {
-    setSnack({ open: true, message: 'Errore di rete durante l\'upload', severity: 'error' });
+    setSnack({ open: true, message: "Errore di rete durante l'upload", severity: 'error' });
   }
 };
 

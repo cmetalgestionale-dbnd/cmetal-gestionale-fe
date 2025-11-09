@@ -93,10 +93,10 @@ const CommessaManagement = () => {
       }
 
       // Controllo dimensione 1MB
-      if (selectedFile.size > 1024 * 1024) {
-        alert('Il file non può superare 1 MB');
-        e.target.value = '';
-        return;
+      if (selectedFile.size > 2 * 1024 * 1024) { // 2MB
+          alert('Il file non può superare 2 MB');
+          e.target.value = '';
+          return;
       }
 
       setFile(selectedFile);
@@ -108,7 +108,8 @@ const CommessaManagement = () => {
     setRemoveFileConfirm(true);
   };
 
-  const handleSubmit = async () => {
+const handleSubmit = async () => {
+  try {
     const form = new FormData();
     form.append('commessa', new Blob([JSON.stringify(formData)], { type: 'application/json' }));
     if (file) form.append('file', file);
@@ -119,10 +120,21 @@ const CommessaManagement = () => {
       : `${backendUrl}/api/commesse`;
     const method = editingCommessa ? 'PUT' : 'POST';
 
-    await fetch(url, { method, body: form, credentials: 'include' });
+    const res = await fetch(url, { method, body: form, credentials: 'include' });
+
+    if (!res.ok) {
+      const text = await res.text();
+      alert(`Errore: ${text}`);
+      return;
+    }
+
     handleCloseForm();
     fetchCommesse();
-  };
+  } catch (err: any) {
+    alert(`Errore: ${err.message}`);
+  }
+};
+
 
   const handleDeleteClick = (c: Commessa) => {
     setCommessaToDelete(c);
