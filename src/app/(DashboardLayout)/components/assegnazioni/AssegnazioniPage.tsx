@@ -128,7 +128,7 @@ useEffect(() => {
     }
   };
   loadInitialData();
-}, []);
+}, [backendUrl]);
 
 
   // carica assegnazioni (quando cambia utente o data)
