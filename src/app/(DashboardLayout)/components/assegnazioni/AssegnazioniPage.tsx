@@ -653,7 +653,7 @@ const handleUploadFoto = async (id: number, file: File) => {
         <DialogTitle>Conferma eliminazione</DialogTitle>
         <DialogContent>
           <Typography>
-            Vuoi davvero eliminare l'assegnazione <strong>{confirmDelete?.commessa.codice}</strong> per{' '}
+            Vuoi davvero eliminare l&apos;assegnazione <strong>{confirmDelete?.commessa.codice}</strong> per{' '}
             <strong>{confirmDelete?.cliente.nome}</strong>?
           </Typography>
         </DialogContent>
@@ -678,7 +678,7 @@ const handleUploadFoto = async (id: number, file: File) => {
         <DialogTitle>Conferma azione</DialogTitle>
         <DialogContent>
           <Typography>
-            Vuoi davvero {confirmAction?.tipo === 'start' ? 'iniziare' : 'terminare'} l'assegnazione{' '}
+            Vuoi davvero {confirmAction?.tipo === 'start' ? 'iniziare' : 'terminare'} l&apos;assegnazione{' '}
             <strong>{confirmAction?.assegnazione.commessa.codice}</strong>?
           </Typography>
         </DialogContent>
