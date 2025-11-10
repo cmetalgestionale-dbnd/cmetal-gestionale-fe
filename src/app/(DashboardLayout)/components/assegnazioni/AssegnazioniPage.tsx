@@ -1,6 +1,9 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import { useWS } from '@/app/(DashboardLayout)/ws/WSContext';
+import { IMessage } from '@stomp/stompjs'; // solo il tipo per il callback
+
+import React, { useEffect, useState, useRef, useCallback,  } from 'react';
 import {
   Box,
   Paper,
@@ -132,29 +135,49 @@ useEffect(() => {
 }, [backendUrl]);
 
 
-  // carica assegnazioni (quando cambia utente o data)
-  useEffect(() => {
-    if (!selectedDipendente) return;
-    const fetchData = async () => {
-      const dateParam = selectedDate.toISOString().split('T')[0];
-      const url = `${backendUrl}/api/assegnazioni?utenteId=${selectedDipendente}&date=${dateParam}`;
+const fetchAssignments = useCallback(async () => {
+  if (!selectedDipendente) return;
+  const dateParam = selectedDate.toISOString().split('T')[0];
+  const url = `${backendUrl}/api/assegnazioni?utenteId=${selectedDipendente}&date=${dateParam}`;
 
-      try {
-        const res = await fetch(url, { credentials: 'include' });
-        if (!res.ok) {
-          setSnack({ open: true, message: 'Errore nel recuperare le assegnazioni', severity: 'error' });
-          return;
-        }
-        const data = await res.json();
-        data.sort((a: Assegnazione, b: Assegnazione) => new Date(a.assegnazioneAt).getTime() - new Date(b.assegnazioneAt).getTime());
-        setAssegnazioni(data);
-      } catch (e) {
-        setSnack({ open: true, message: 'Errore di rete', severity: 'error' });
+  try {
+    const res = await fetch(url, { credentials: 'include' });
+    if (!res.ok) {
+      setSnack({ open: true, message: 'Errore nel recuperare le assegnazioni', severity: 'error' });
+      return;
+    }
+    const data = await res.json();
+    data.sort((a: Assegnazione, b: Assegnazione) => new Date(a.assegnazioneAt).getTime() - new Date(b.assegnazioneAt).getTime());
+    setAssegnazioni(data);
+  } catch (e) {
+    setSnack({ open: true, message: 'Errore di rete', severity: 'error' });
+  }
+}, [selectedDipendente, selectedDate, backendUrl]);
+
+
+useEffect(() => {
+  fetchAssignments();
+}, [fetchAssignments]);
+
+// subscribe al broadcast globale (usa subscribe fornito dal WSProvider)
+const { subscribe } = useWS();
+
+useEffect(() => {
+  const unsubscribe = subscribe((msg: IMessage) => {
+    try {
+      const payload = msg.body ? JSON.parse(msg.body) : {};
+      const tipo = payload.tipoEvento ?? payload.tipo ?? payload.tipo_evento;
+      if (tipo === 'REFRESH' || tipo === 'MSG_REFRESH') {
+        // rifetcha i dati (fetchAssignments è già definita)
+        fetchAssignments();
       }
-    };
+    } catch (e) {
+      console.warn('WS message parse error', e);
+    }
+  });
+  return () => unsubscribe();
+}, [subscribe, fetchAssignments]);
 
-    fetchData();
-  }, [selectedDipendente, selectedDate, backendUrl]);
 
   // ricerca commesse/clienti
   const loadCommesse = async () => {

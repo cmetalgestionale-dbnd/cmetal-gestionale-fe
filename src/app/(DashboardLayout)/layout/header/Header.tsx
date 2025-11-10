@@ -65,7 +65,7 @@ const Header = ({toggleMobileSidebar}: ItemType) => {
         </IconButton>
         <Box flexGrow={1} />
 {/* Stato WebSocket */}
-{pathname === '/private/admin/assegnazioni' && (
+{(
   <Box
     sx={{
       px: 2,

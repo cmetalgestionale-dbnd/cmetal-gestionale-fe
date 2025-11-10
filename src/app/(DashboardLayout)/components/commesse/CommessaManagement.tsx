@@ -1,5 +1,8 @@
 'use client';
 
+import { useWS } from '@/app/(DashboardLayout)/ws/WSContext';
+import { IMessage } from '@stomp/stompjs';
+
 import React, { useEffect, useState } from 'react';
 import {
   Box, Paper, Typography, Table, TableHead, TableRow, TableCell,
@@ -51,6 +54,25 @@ const CommessaManagement = () => {
   useEffect(() => {
     fetchCommesse();
   }, []);
+
+    const { subscribe } = useWS();
+
+  useEffect(() => {
+    const unsubscribe = subscribe((msg: IMessage) => {
+      try {
+        const payload = msg.body ? JSON.parse(msg.body) : {};
+        const tipo = payload.tipoEvento ?? payload.tipo ?? payload.tipo_evento;
+        if (tipo === 'REFRESH' || tipo === 'MSG_REFRESH') {
+          fetchCommesse();
+        }
+      } catch (e) {
+        console.warn('Errore parsing messaggio WS', e);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [subscribe]);
+
 
   const handleOpenForm = (commessa?: Commessa) => {
     if (commessa) {

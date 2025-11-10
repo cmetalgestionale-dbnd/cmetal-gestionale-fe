@@ -1,5 +1,8 @@
 'use client';
 
+import { useWS } from '@/app/(DashboardLayout)/ws/WSContext';
+import { IMessage } from '@stomp/stompjs';
+
 import React, { useEffect, useState } from 'react';
 import {
   Box,
@@ -90,6 +93,25 @@ const UserManagement = ({ readOnly = false }: { readOnly?: boolean }) => {
   useEffect(() => {
     fetchUtenti();
   }, []);
+
+    const { subscribe } = useWS();
+
+  useEffect(() => {
+    const unsubscribe = subscribe((msg: IMessage) => {
+      try {
+        const payload = msg.body ? JSON.parse(msg.body) : {};
+        const tipo = payload.tipoEvento ?? payload.tipo ?? payload.tipo_evento;
+        if (tipo === 'REFRESH' || tipo === 'MSG_REFRESH') {
+          fetchUtenti();
+        }
+      } catch (e) {
+        console.warn('Errore parsing messaggio WS', e);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [subscribe]);
+
 
   const handleOpenForm = (utente?: Utente) => {
     if (utente) {
