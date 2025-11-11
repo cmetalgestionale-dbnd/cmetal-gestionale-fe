@@ -385,80 +385,122 @@ const handleUploadFoto = async (id: number, file: File) => {
   };
 
   return (
-    <Paper sx={{ p: 3, borderRadius: 3 }}>
-      {/* HEADER */}
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} gap={2}>
-        <TextField
-          select
-          label="Dipendente"
-          size="small"
-          value={selectedDipendente ?? ''}
-          onChange={e => setSelectedDipendente(Number(e.target.value))}
-          disabled={ruolo === 'DIPENDENTE'}
-          sx={{ width: 250 }}
-        >
-          {dipendenti.map(d => (
-            <MenuItem key={d.id} value={d.id}>
-              {d.nome} {d.cognome}
-            </MenuItem>
-          ))}
-        </TextField>
+    <Paper
+  sx={{
+    p: { xs: 2, md: 3 },        // padding adattivo
+    borderRadius: 3,
+    minHeight: '86vh',        // occupa tutta l'altezza della finestra
+    boxSizing: 'border-box',
+    display: 'flex',
+    flexDirection: 'column',
 
-        <Box display="flex" alignItems="center" gap={2}>
-          <IconButton onClick={() => changeDate(-1)}>
-            <ArrowBack />
-          </IconButton>
-          <Typography fontWeight={600}>
-            {selectedDate.toLocaleDateString('it-IT', {
-              weekday: 'short',
-              day: '2-digit',
-              month: '2-digit',
-            })}
-          </Typography>
-          <IconButton onClick={() => changeDate(1)}>
-            <ArrowForward />
-          </IconButton>
-        </Box>
+    // larghezza responsive: pieno su mobile, limitato e centrato su desktop
+    width: '100%',
+    maxWidth: { xs: '100%', md: '95vw' }, // md e oltre: max 1200px (modificabile)
+    minWidth: { md: '95vw', lg: 1200 },
+    //mx: 'auto',
 
-        {ruolo === 'ADMIN' && (
-          <Button startIcon={<Add />} variant="contained" size="small" onClick={() => handleOpenForm()}>
-            Nuova assegnazione
-          </Button>
-        )}
-      </Box>
+    // sfondo/ombra opzionali per maggiore contrasto su schermi grandi
+    // backgroundColor: 'background.paper',
+    // boxShadow: { xs: 'none', md: 1 },
+  }}
+>
+  {/* HEADER */}
+  <Box
+    display="flex"
+    flexWrap="wrap" // permette ai componenti di andare a capo se manca spazio
+    justifyContent="space-between"
+    alignItems="center"
+    mb={3}
+    gap={2}
+  >
+    <TextField
+      select
+      label="Dipendente"
+      size="small"
+      value={selectedDipendente ?? ''}
+      onChange={e => setSelectedDipendente(Number(e.target.value))}
+      disabled={ruolo === 'DIPENDENTE'}
+      sx={{ width: 250, minWidth: 120 }}
+    >
+      {dipendenti.map(d => (
+        <MenuItem key={d.id} value={d.id}>
+          {d.nome} {d.cognome}
+        </MenuItem>
+      ))}
+    </TextField>
 
-      {/* LISTA */}
-      <Grid container spacing={2}>
-        {assegnazioni.map(a => (
-          <Grid size={{ xs: 12, sm: 6, md: 4 }} key={a.id}>
-            <Card variant="outlined">
-              <CardContent>
-                <Typography variant="subtitle1" fontWeight={600}>
-                  {a.commessa.codice} — {a.cliente.nome}
+    <Box display="flex" alignItems="center" gap={2}>
+      <IconButton onClick={() => changeDate(-1)}>
+        <ArrowBack />
+      </IconButton>
+      <Typography fontWeight={600}>
+        {selectedDate.toLocaleDateString('it-IT', {
+          weekday: 'short',
+          day: '2-digit',
+          month: '2-digit',
+        })}
+      </Typography>
+      <IconButton onClick={() => changeDate(1)}>
+        <ArrowForward />
+      </IconButton>
+    </Box>
+
+    {ruolo === 'ADMIN' && (
+      <Button startIcon={<Add />} variant="contained" size="small" onClick={() => handleOpenForm()}>
+        Nuova assegnazione
+      </Button>
+    )}
+  </Box>
+
+  {/* LISTA */}
+  <Box
+    sx={{
+      flexGrow: 1, // 2. Il contenitore delle card riempie tutto lo spazio rimanente
+      overflowY: 'auto', // scrollbar se ci sono troppe card
+    }}
+  >
+    <Grid container spacing={2}>
+      {assegnazioni.map(a => (
+        <Grid size={{ xs: 12, sm: 6, md: 4 }} key={a.id}>
+          <Card
+            variant="outlined"
+            sx={{
+              height: 250, // 3. Altezza fissa
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              wordBreak: 'break-word', // permette al testo di andare a capo se necessario
+              overflow: 'hidden',
+            }}
+          >
+            <CardContent sx={{ flex: 1 }}>
+              <Typography variant="subtitle1" fontWeight={600} noWrap={false}>
+                {a.commessa.codice} — {a.cliente.nome}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" mt={1} sx={{ overflowWrap: 'break-word' }}>
+                {a.note || 'Nessuna nota'}
+              </Typography>
+              <Typography mt={2} color={statusColor(a)} fontWeight={600}>
+                {getStatus(a)}
+              </Typography>
+              {a.startAt && (
+                <Typography variant="body2" color="text.secondary">
+                  Inizio: {new Date(a.startAt).toLocaleTimeString('it-IT')}
                 </Typography>
-                <Typography variant="body2" color="text.secondary" mt={1}>
-                  {a.note || 'Nessuna nota'}
+              )}
+              {a.endAt && (
+                <Typography variant="body2" color="text.secondary">
+                  Fine: {new Date(a.endAt).toLocaleTimeString('it-IT')}
                 </Typography>
-                <Typography mt={2} color={statusColor(a)} fontWeight={600}>
-                  {getStatus(a)}
+              )}
+              {a.fotoAllegato && !a.endAt && (
+                <Typography variant="caption" color="text.secondary">
+                  Allegato caricato, puoi terminare
                 </Typography>
-                {a.startAt && (
-                  <Typography variant="body2" color="text.secondary">
-                    Inizio: {new Date(a.startAt).toLocaleTimeString('it-IT')}
-                  </Typography>
-                )}
-                {a.endAt && (
-                  <Typography variant="body2" color="text.secondary">
-                    Fine: {new Date(a.endAt).toLocaleTimeString('it-IT')}
-                  </Typography>
-                )}
-                {a.fotoAllegato && !a.endAt && (
-                  <Typography variant="caption" color="text.secondary">
-                    Allegato caricato, puoi terminare
-                  </Typography>
-                )}
-              </CardContent>
-              <CardActions>
+              )}
+            </CardContent>
+            <CardActions>
                 {ruolo === 'ADMIN' && (
                   <>
                     <Tooltip title="Modifica">
@@ -535,10 +577,12 @@ const handleUploadFoto = async (id: number, file: File) => {
                   </Tooltip>
                 )}
               </CardActions>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
+          </Card>
+        </Grid>
+      ))}
+    </Grid>
+  </Box>
+
 
       {/* DIALOG NUOVA/MODIFICA */}
       <Dialog open={openForm} onClose={() => setOpenForm(false)} fullWidth maxWidth="sm">
