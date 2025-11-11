@@ -111,6 +111,45 @@ const AssegnazioniPage = () => {
     { open: false, message: '', severity: 'success' }
   );
 
+  const [loadingAssignments, setLoadingAssignments] = useState(false);
+
+const loadCommesse = async () => {
+  if (commesse.length > 0) return; // se già caricate, non rifare fetch
+  try {
+    const res = await fetch(`${backendUrl}/api/commesse`, { credentials: 'include' });
+    if (!res.ok) throw new Error('Errore fetch commesse');
+    const data: Commessa[] = await res.json();
+    setCommesse(data);
+  } catch (e) {
+    setSnack({ open: true, message: 'Errore caricando commesse', severity: 'error' });
+  }
+};
+
+const loadClienti = async () => {
+  if (clienti.length > 0) return; // se già caricati, non rifare fetch
+  try {
+    const res = await fetch(`${backendUrl}/api/clienti`, { credentials: 'include' });
+    if (!res.ok) throw new Error('Errore fetch clienti');
+    const data: Cliente[] = await res.json();
+    setClienti(data);
+  } catch (e) {
+    setSnack({ open: true, message: 'Errore caricando clienti', severity: 'error' });
+  }
+};
+
+const filteredCommesse = commesse.filter(c =>
+  c.codice.toLowerCase().includes(searchCommessa.toLowerCase()) ||
+  (c.descrizione?.toLowerCase().includes(searchCommessa.toLowerCase()))
+);
+
+const filteredClienti = clienti.filter(c =>
+  c.nome.toLowerCase().includes(searchCliente.toLowerCase())
+);
+
+
+
+
+
 useEffect(() => {
   const loadInitialData = async () => {
     // Recupera utente corrente
@@ -137,6 +176,9 @@ useEffect(() => {
 
 const fetchAssignments = useCallback(async () => {
   if (!selectedDipendente) return;
+
+  setLoadingAssignments(true);
+
   const dateParam = selectedDate.toISOString().split('T')[0];
   const url = `${backendUrl}/api/assegnazioni?utenteId=${selectedDipendente}&date=${dateParam}`;
 
@@ -144,6 +186,7 @@ const fetchAssignments = useCallback(async () => {
     const res = await fetch(url, { credentials: 'include' });
     if (!res.ok) {
       setSnack({ open: true, message: 'Errore nel recuperare le assegnazioni', severity: 'error' });
+      setAssegnazioni([]);
       return;
     }
     const data = await res.json();
@@ -151,8 +194,12 @@ const fetchAssignments = useCallback(async () => {
     setAssegnazioni(data);
   } catch (e) {
     setSnack({ open: true, message: 'Errore di rete', severity: 'error' });
+    setAssegnazioni([]);
+  } finally {
+    setLoadingAssignments(false);
   }
 }, [selectedDipendente, selectedDate, backendUrl]);
+
 
 
 useEffect(() => {
@@ -177,21 +224,6 @@ useEffect(() => {
   });
   return () => unsubscribe();
 }, [subscribe, fetchAssignments]);
-
-
-  // ricerca commesse/clienti
-  const loadCommesse = async () => {
-    const res = await fetch(`${backendUrl}/api/commesse?search=${encodeURIComponent(searchCommessa)}`, {
-      credentials: 'include',
-    });
-    setCommesse(await res.json());
-  };
-  const loadClienti = async () => {
-    const res = await fetch(`${backendUrl}/api/clienti?search=${encodeURIComponent(searchCliente)}`, {
-      credentials: 'include',
-    });
-    setClienti(await res.json());
-  };
 
   // navigazione date
   const changeDate = (days: number) => {
@@ -431,9 +463,9 @@ const handleUploadFoto = async (id: number, file: File) => {
     </TextField>
 
     <Box display="flex" alignItems="center" gap={2}>
-      <IconButton onClick={() => changeDate(-1)}>
-        <ArrowBack />
-      </IconButton>
+<IconButton onClick={() => changeDate(-1)} disabled={loadingAssignments}>
+  <ArrowBack />
+</IconButton>
       <Typography fontWeight={600}>
         {selectedDate.toLocaleDateString('it-IT', {
           weekday: 'short',
@@ -441,9 +473,9 @@ const handleUploadFoto = async (id: number, file: File) => {
           month: '2-digit',
         })}
       </Typography>
-      <IconButton onClick={() => changeDate(1)}>
-        <ArrowForward />
-      </IconButton>
+<IconButton onClick={() => changeDate(1)} disabled={loadingAssignments}>
+  <ArrowForward />
+</IconButton>
     </Box>
 
     {ruolo === 'ADMIN' && (
@@ -460,6 +492,11 @@ const handleUploadFoto = async (id: number, file: File) => {
       overflowY: 'auto', // scrollbar se ci sono troppe card
     }}
   >
+      {assegnazioni.length === 0 ? (
+    <Typography textAlign="center" mt={5} color="text.secondary">
+      Nessuna assegnazione trovata
+    </Typography>
+  ) : (
     <Grid container spacing={2}>
       {assegnazioni.map(a => (
         <Grid size={{ xs: 12, sm: 6, md: 4 }} key={a.id}>
@@ -564,7 +601,7 @@ const handleUploadFoto = async (id: number, file: File) => {
                   </Tooltip>
                 )}
 
-                {ruolo === 'ADMIN' && a.fotoAllegato && a.endAt && (
+                {(ruolo === 'ADMIN' || ruolo === 'SUPERVISORE' )&& a.fotoAllegato && a.endAt && (
                   <Tooltip title="Visualizza foto allegata">
                     <IconButton
                       component="a"
@@ -581,6 +618,7 @@ const handleUploadFoto = async (id: number, file: File) => {
         </Grid>
       ))}
     </Grid>
+  )}
   </Box>
 
 
@@ -649,17 +687,16 @@ const handleUploadFoto = async (id: number, file: File) => {
       <Dialog open={openCommessaModal} onClose={() => setOpenCommessaModal(false)} fullWidth maxWidth="md">
         <DialogTitle>Seleziona Commessa</DialogTitle>
         <DialogContent>
-          <TextField
-            placeholder="Cerca per codice o descrizione"
-            value={searchCommessa}
-            onChange={e => setSearchCommessa(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && loadCommesse()}
-            fullWidth
-            size="small"
-            sx={{ mb: 2 }}
-          />
+<TextField
+  placeholder="Cerca per codice o descrizione"
+  value={searchCommessa}
+  onChange={e => setSearchCommessa(e.target.value)}
+  fullWidth
+  size="small"
+  sx={{ mb: 2 }}
+/>
           <Box display="flex" flexDirection="column" gap={1}>
-            {commesse.map(c => (
+            {filteredCommesse.map(c => (
               <Paper
                 key={c.id}
                 sx={{
@@ -668,7 +705,7 @@ const handleUploadFoto = async (id: number, file: File) => {
                   justifyContent: 'space-between',
                   alignItems: 'center',
                   cursor: 'pointer',
-                  '&:hover': { backgroundColor: '#f5f5f5' },
+                  '&:hover': { backgroundColor: '#4d4d4dff' },
                 }}
                 onClick={() => {
                   setFormData({ ...formData, commessa: c });
@@ -697,23 +734,22 @@ const handleUploadFoto = async (id: number, file: File) => {
       <Dialog open={openClienteModal} onClose={() => setOpenClienteModal(false)} fullWidth maxWidth="sm">
         <DialogTitle>Seleziona Cliente</DialogTitle>
         <DialogContent>
-          <TextField
-            placeholder="Cerca cliente per nome"
-            value={searchCliente}
-            onChange={e => setSearchCliente(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && loadClienti()}
-            fullWidth
-            size="small"
-            sx={{ mb: 2 }}
-          />
+<TextField
+  placeholder="Cerca cliente per nome"
+  value={searchCliente}
+  onChange={e => setSearchCliente(e.target.value)}
+  fullWidth
+  size="small"
+  sx={{ mb: 2 }}
+/>
           <Box display="flex" flexDirection="column" gap={1}>
-            {clienti.map(c => (
+            {filteredClienti.map(c => (
               <Paper
                 key={c.id}
                 sx={{
                   p: 1.5,
                   cursor: 'pointer',
-                  '&:hover': { backgroundColor: '#f5f5f5' },
+                  '&:hover': { backgroundColor: '#4d4d4dff' },
                 }}
                 onClick={() => {
                   setFormData({ ...formData, cliente: c });
