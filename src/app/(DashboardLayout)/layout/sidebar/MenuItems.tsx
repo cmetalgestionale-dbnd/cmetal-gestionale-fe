@@ -4,7 +4,8 @@ import {
   IconGraph,
   IconUser,
   IconBriefcase2,
-  IconHammer
+  IconHammer,
+  IconForklift
 } from "@tabler/icons-react";
 
 
@@ -38,6 +39,12 @@ const Menuitems = [
     title: "Gestione Clienti",
     icon: IconBriefcase2,
     href: "/private/admin/clienti",
+  },
+  {
+    id: uniqueId(),
+    title: "Gestione Inventario",
+    icon: IconForklift,
+    href: "/private/admin/magazzino",
   },
   {
     navlabel: true,

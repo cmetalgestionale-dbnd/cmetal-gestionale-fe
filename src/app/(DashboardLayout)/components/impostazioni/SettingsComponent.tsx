@@ -307,7 +307,8 @@ const SettingsComponent = ({ readOnly = false }: { readOnly?: boolean }) => {
                 Seleziona cosa vuoi pulire:
               </Typography>
               <FormGroup>
-                {['assegnazioni', 'commesse', 'clienti', 'utenti'].map((ent) => (
+              {['assegnazioni', 'commesse', 'clienti', 'utenti', 'magazzino'].map((ent) => (
+
                   <FormControlLabel
                     key={ent}
                     control={
@@ -345,6 +346,9 @@ const SettingsComponent = ({ readOnly = false }: { readOnly?: boolean }) => {
                 )}
                 {selectedEntities.includes('utenti') && (
                   <li>🔑 Utenze eliminate e relative assegnazioni</li>
+                )}
+                {selectedEntities.includes('magazzino') && (
+                  <li>📦 Storico movimenti di magazzino precedenti a ieri (le quantita della giacenza NON verranno modificate)</li>
                 )}
               </ul>
             </Alert>
