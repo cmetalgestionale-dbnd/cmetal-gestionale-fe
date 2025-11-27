@@ -66,11 +66,15 @@ const MagazzinoPage = () => {
           <MagazzinoSelector onSelect={setSelectedMagazzinoId} />
         </Grid>
 
-        {selectedMagazzinoId && (
-          <Grid>
-            <InventarioList magazzinoId={selectedMagazzinoId} />
-          </Grid>
-        )}
+{selectedMagazzinoId && (
+  <Grid>
+    <InventarioList
+      key={selectedMagazzinoId}
+      magazzinoId={selectedMagazzinoId}
+    />
+  </Grid>
+)}
+
       </Grid>
     </PageContainer>
   );
