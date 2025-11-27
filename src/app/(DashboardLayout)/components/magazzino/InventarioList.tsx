@@ -193,6 +193,14 @@ const handleSort = (field: string) => {
       Nome {sortField === 'nome' && (sortDirection === 'asc' ? '▲' : '▼')}
     </TableCell>
 
+    <TableCell
+  onClick={() => handleSort('descrizione')}
+  sx={{ cursor: 'pointer' }}
+>
+  Descrizione {sortField === 'descrizione' && (sortDirection === 'asc' ? '▲' : '▼')}
+</TableCell>
+
+
     <TableCell onClick={() => handleSort('categoria')} sx={{ cursor: 'pointer' }}>
       Categoria {sortField === 'categoria' && (sortDirection === 'asc' ? '▲' : '▼')}
     </TableCell>
@@ -238,6 +246,7 @@ const handleSort = (field: string) => {
         }
       >
         <TableCell>{articolo.nome}</TableCell>
+        <TableCell>{articolo.descrizione}</TableCell>
         <TableCell>{articolo.categoria}</TableCell>
         <TableCell>{articolo.quantitaMagazzino}</TableCell>
         <TableCell>{articolo.prezzoUnitario} €</TableCell>
