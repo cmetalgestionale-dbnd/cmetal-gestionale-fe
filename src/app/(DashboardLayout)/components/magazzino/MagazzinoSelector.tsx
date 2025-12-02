@@ -25,8 +25,8 @@ const MagazzinoSelector = ({ onSelect }: { onSelect: (id: number | null) => void
   const [selected, setSelected] = useState<number | ''>('');
   const [open, setOpen] = useState(false);
   const [nomeMagazzino, setNomeMagazzino] = useState('');
-
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
 
   const fetchMagazzini = async () => {
     const res = await fetch(`${backendUrl}/api/magazzini`, { credentials: 'include' });
@@ -39,15 +39,20 @@ const MagazzinoSelector = ({ onSelect }: { onSelect: (id: number | null) => void
   }, []);
 
   const handleCreate = async () => {
-    await fetch(`${backendUrl}/api/magazzini`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nome: nomeMagazzino }),
-    });
-    setOpen(false);
-    setNomeMagazzino('');
-    await fetchMagazzini();
+    setActionLoading(true);
+    try {
+      await fetch(`${backendUrl}/api/magazzini`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nome: nomeMagazzino }),
+      });
+      setOpen(false);
+      setNomeMagazzino('');
+      await fetchMagazzini();
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const handleSelect = (value: string | number) => {
@@ -58,14 +63,19 @@ const MagazzinoSelector = ({ onSelect }: { onSelect: (id: number | null) => void
 
   const handleConfirmDelete = async () => {
     if (!selected) return;
-    await fetch(`${backendUrl}/api/magazzini/${selected}`, {
-      method: 'DELETE',
-      credentials: 'include',
-    });
-    setConfirmDeleteOpen(false);
-    setSelected('');
-    onSelect(null);
-    fetchMagazzini();
+    setActionLoading(true);
+    try {
+      await fetch(`${backendUrl}/api/magazzini/${selected}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      setConfirmDeleteOpen(false);
+      setSelected('');
+      onSelect(null);
+      fetchMagazzini();
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const currentMag = magazzini.find((m) => m.id === selected);
@@ -79,6 +89,7 @@ const MagazzinoSelector = ({ onSelect }: { onSelect: (id: number | null) => void
         onChange={(e) => handleSelect(e.target.value)}
         size="small"
         sx={{ width: 250 }}
+        disabled={actionLoading}
       >
         {magazzini.map((m) => (
           <MenuItem key={m.id} value={m.id}>
@@ -87,7 +98,12 @@ const MagazzinoSelector = ({ onSelect }: { onSelect: (id: number | null) => void
         ))}
       </TextField>
 
-      <Button variant="contained" size="small" onClick={() => setOpen(true)}>
+      <Button
+        variant="contained"
+        size="small"
+        onClick={() => setOpen(true)}
+        disabled={actionLoading}
+      >
         Nuovo Magazzino
       </Button>
 
@@ -95,7 +111,7 @@ const MagazzinoSelector = ({ onSelect }: { onSelect: (id: number | null) => void
         variant="outlined"
         size="small"
         color="error"
-        disabled={!selected}
+        disabled={!selected || actionLoading}
         onClick={() => setConfirmDeleteOpen(true)}
       >
         Elimina Magazzino
@@ -114,8 +130,10 @@ const MagazzinoSelector = ({ onSelect }: { onSelect: (id: number | null) => void
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpen(false)}>Annulla</Button>
-          <Button onClick={handleCreate} variant="contained">
+          <Button onClick={() => setOpen(false)} disabled={actionLoading}>
+            Annulla
+          </Button>
+          <Button onClick={handleCreate} variant="contained" disabled={actionLoading}>
             Salva
           </Button>
         </DialogActions>
@@ -133,8 +151,15 @@ const MagazzinoSelector = ({ onSelect }: { onSelect: (id: number | null) => void
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setConfirmDeleteOpen(false)}>Annulla</Button>
-          <Button color="error" variant="contained" onClick={handleConfirmDelete}>
+          <Button onClick={() => setConfirmDeleteOpen(false)} disabled={actionLoading}>
+            Annulla
+          </Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={handleConfirmDelete}
+            disabled={actionLoading}
+          >
             Elimina
           </Button>
         </DialogActions>

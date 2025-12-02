@@ -39,7 +39,7 @@ const ReportPage = () => {
 
   if (loading) {
     return (
-      <PageContainer title="Report" description="">
+      <PageContainer title="Caricamento..." description="">
         <Box>Caricamento...</Box>
       </PageContainer>
     );
@@ -59,7 +59,7 @@ const ReportPage = () => {
   }
 
   return (
-    <PageContainer title="Genera Report" description="Genera Report">
+    <PageContainer title="Report" description="Report">
       <Grid container spacing={3}>
         <Grid>
           <ReportComponent />

@@ -54,6 +54,9 @@ const SettingsComponent = ({ readOnly = false }: { readOnly?: boolean }) => {
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState<string | null>(null);
 
+  // 🔥 DISABILITA TUTTI I BOTTONI DURANTE API
+  const [actionLoading, setActionLoading] = useState(false);
+
   const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
 
   const fetchSettings = async () => {
@@ -75,6 +78,7 @@ const SettingsComponent = ({ readOnly = false }: { readOnly?: boolean }) => {
   };
 
   const updateSetting = async (chiave: string, valore: string) => {
+    setActionLoading(true);
     await fetch(`${backendUrl}/api/impostazioni/${chiave}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'text/plain' },
@@ -82,6 +86,7 @@ const SettingsComponent = ({ readOnly = false }: { readOnly?: boolean }) => {
       body: valore,
     });
     await fetchSettings();
+    setActionLoading(false);
   };
 
   const handleToggle = (setting: Impostazione) => {
@@ -137,6 +142,7 @@ const SettingsComponent = ({ readOnly = false }: { readOnly?: boolean }) => {
 
   const handleRunCleanup = async () => {
     setLoading(true);
+    setActionLoading(true);
     try {
       const res = await fetch(`${backendUrl}/api/retention/run`, {
         method: 'POST',
@@ -144,16 +150,15 @@ const SettingsComponent = ({ readOnly = false }: { readOnly?: boolean }) => {
         credentials: 'include',
         body: JSON.stringify({ entities: selectedEntities }),
       });
+
       const text = await res.text();
       setReport(text);
 
-      // ✅ Aggiorna i dati dello spazio dopo la pulizia
       await fetchSpaceUsage();
-
-      // ✅ Rimuovi il warning di conferma
       setConfirmStep(false);
     } finally {
       setLoading(false);
+      setActionLoading(false);
     }
   };
 
@@ -196,13 +201,11 @@ const SettingsComponent = ({ readOnly = false }: { readOnly?: boolean }) => {
               <TableCell sx={{ fontWeight: 600 }}>Valore</TableCell>
             </TableRow>
           </TableHead>
+
           <TableBody>
             {settings.map((setting) => {
               const edited = editedValues[setting.chiave];
-              const showSave =
-                setting.tipo === 'string' &&
-                edited !== undefined &&
-                edited !== setting.valore;
+              const showSave = setting.tipo === 'string' && edited !== undefined && edited !== setting.valore;
 
               return (
                 <TableRow key={setting.chiave}>
@@ -212,7 +215,7 @@ const SettingsComponent = ({ readOnly = false }: { readOnly?: boolean }) => {
                       <Switch
                         checked={setting.valore === '1'}
                         onChange={() => handleToggle(setting)}
-                        disabled={readOnly}
+                        disabled={readOnly || actionLoading}
                       />
                     ) : setting.tipo === 'string' ? (
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -221,6 +224,7 @@ const SettingsComponent = ({ readOnly = false }: { readOnly?: boolean }) => {
                           size="small"
                           onChange={(e) => handleStringEdit(setting.chiave, e.target.value)}
                           inputProps={{ style: { width: 250 }, readOnly }}
+                          disabled={actionLoading}
                         />
                         {showSave && !readOnly && (
                           <Button
@@ -229,6 +233,7 @@ const SettingsComponent = ({ readOnly = false }: { readOnly?: boolean }) => {
                             color="primary"
                             onClick={() => handleStringSave(setting)}
                             startIcon={<Save />}
+                            disabled={actionLoading}
                           >
                             Salva
                           </Button>
@@ -236,22 +241,24 @@ const SettingsComponent = ({ readOnly = false }: { readOnly?: boolean }) => {
                       </Box>
                     ) : (
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <IconButton onClick={() => handleDecrement(setting)} disabled={readOnly}>
+                        <IconButton onClick={() => handleDecrement(setting)} disabled={readOnly || actionLoading}>
                           <Remove />
                         </IconButton>
+
                         <TextField
                           value={setting.valore}
                           size="small"
                           onChange={(e) => {
-                            if (setting.tipo === 'double')
-                              handleDoubleChange(setting, e.target.value);
+                            if (setting.tipo === 'double') handleDoubleChange(setting, e.target.value);
                           }}
                           inputProps={{
                             style: { width: 70, textAlign: 'center' },
                             readOnly: readOnly && setting.tipo !== 'double',
                           }}
+                          disabled={actionLoading}
                         />
-                        <IconButton onClick={() => handleIncrement(setting)} disabled={readOnly}>
+
+                        <IconButton onClick={() => handleIncrement(setting)} disabled={readOnly || actionLoading}>
                           <Add />
                         </IconButton>
                       </Box>
@@ -264,15 +271,18 @@ const SettingsComponent = ({ readOnly = false }: { readOnly?: boolean }) => {
         </Table>
       </TableContainer>
 
-      {/* --- SEZIONE PULIZIA --- */}
       <Divider sx={{ my: 4 }} />
+
+      {/* --- SEZIONE PULIZIA --- */}
       <Box textAlign="center">
         <Typography variant="h6" mb={1}>
           Pulizia database e storage
         </Typography>
+
         <Typography variant="body2" mb={2}>
           Gestisci lo spazio e rimuovi dati obsoleti.
         </Typography>
+
         <Button
           variant="contained"
           color="secondary"
@@ -283,14 +293,16 @@ const SettingsComponent = ({ readOnly = false }: { readOnly?: boolean }) => {
             setSelectedEntities([]);
             setConfirmStep(false);
           }}
+          disabled={actionLoading}
         >
           Apri gestione spazio
         </Button>
       </Box>
 
-      {/* --- MODALE --- */}
+      {/* --- MODALE DI PULIZIA --- */}
       <Dialog open={openModal} onClose={() => setOpenModal(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Gestione spazio</DialogTitle>
+
         <DialogContent>
           {usage ? (
             <>
@@ -303,12 +315,9 @@ const SettingsComponent = ({ readOnly = false }: { readOnly?: boolean }) => {
 
           {!confirmStep && !report && (
             <>
-              <Typography mt={3} mb={1}>
-                Seleziona cosa vuoi pulire:
-              </Typography>
+              <Typography mt={3} mb={1}>Seleziona cosa vuoi pulire:</Typography>
               <FormGroup>
-              {['assegnazioni', 'commesse', 'clienti', 'utenti', 'magazzino'].map((ent) => (
-
+                {['assegnazioni', 'commesse', 'clienti', 'utenti', 'magazzino'].map((ent) => (
                   <FormControlLabel
                     key={ent}
                     control={
@@ -320,6 +329,7 @@ const SettingsComponent = ({ readOnly = false }: { readOnly?: boolean }) => {
                             checked ? [...prev, ent] : prev.filter((x) => x !== ent)
                           );
                         }}
+                        disabled={actionLoading}
                       />
                     }
                     label={ent.charAt(0).toUpperCase() + ent.slice(1)}
@@ -335,21 +345,11 @@ const SettingsComponent = ({ readOnly = false }: { readOnly?: boolean }) => {
                 Confermi la pulizia delle seguenti entità?
               </Typography>
               <ul>
-                {selectedEntities.includes('assegnazioni') && (
-                  <li>🗑️ Assegnazioni precedenti alla data odierna e relativi allegati</li>
-                )}
-                {selectedEntities.includes('commesse') && (
-                  <li>📄 Commesse eliminate e relative assegnazioni e PDF associati</li>
-                )}
-                {selectedEntities.includes('clienti') && (
-                  <li>👥 Clienti eliminati e relative assegnazioni</li>
-                )}
-                {selectedEntities.includes('utenti') && (
-                  <li>🔑 Utenze eliminate e relative assegnazioni</li>
-                )}
-                {selectedEntities.includes('magazzino') && (
-                  <li>📦 Storico movimenti di magazzino precedenti a ieri (le quantita della giacenza NON verranno modificate)</li>
-                )}
+                {selectedEntities.includes('assegnazioni') && <li>🗑️ Assegnazioni precedenti alla data odierna e relativi allegati</li>}
+                {selectedEntities.includes('commesse') && <li>📄 Commesse eliminate e relative assegnazioni e PDF associati</li>}
+                {selectedEntities.includes('clienti') && <li>👥 Clienti eliminati e relative assegnazioni</li>}
+                {selectedEntities.includes('utenti') && <li>🔑 Utenze eliminate e relative assegnazioni</li>}
+                {selectedEntities.includes('magazzino') && <li>📦 Storico movimenti di magazzino</li>}
               </ul>
             </Alert>
           )}
@@ -363,20 +363,15 @@ const SettingsComponent = ({ readOnly = false }: { readOnly?: boolean }) => {
 
         <DialogActions>
           {report ? (
-            // ✅ Mostra solo "Chiudi" dopo la pulizia
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={() => setOpenModal(false)}
-            >
+            <Button variant="contained" onClick={() => setOpenModal(false)} disabled={actionLoading}>
               Chiudi
             </Button>
           ) : !confirmStep ? (
             <>
-              <Button onClick={() => setOpenModal(false)}>Annulla</Button>
+              <Button onClick={() => setOpenModal(false)} disabled={actionLoading}>Annulla</Button>
               <Button
                 variant="contained"
-                disabled={selectedEntities.length === 0}
+                disabled={selectedEntities.length === 0 || actionLoading}
                 onClick={() => setConfirmStep(true)}
               >
                 Procedi
@@ -384,11 +379,13 @@ const SettingsComponent = ({ readOnly = false }: { readOnly?: boolean }) => {
             </>
           ) : (
             <>
-              <Button onClick={() => setConfirmStep(false)}>Indietro</Button>
+              <Button onClick={() => setConfirmStep(false)} disabled={actionLoading}>
+                Indietro
+              </Button>
               <Button
                 variant="contained"
                 color="error"
-                disabled={loading}
+                disabled={loading || actionLoading}
                 onClick={handleRunCleanup}
               >
                 {loading ? 'Pulizia in corso...' : 'Conferma pulizia'}

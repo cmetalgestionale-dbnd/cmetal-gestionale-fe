@@ -41,7 +41,7 @@ const MagazzinoPage = () => {
 
   if (loading) {
     return (
-      <PageContainer title="Magazzino" description="">
+      <PageContainer title="Caricamento.." description="">
         <Box>Caricamento...</Box>
       </PageContainer>
     );
@@ -60,7 +60,7 @@ const MagazzinoPage = () => {
   }
 
   return (
-    <PageContainer title="Gestione Magazzino" description="Gestione Magazzino">
+    <PageContainer title="Inventario" description="Inventario">
       <Grid container spacing={3}>
         <Grid>
           <MagazzinoSelector onSelect={setSelectedMagazzinoId} />

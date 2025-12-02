@@ -55,36 +55,33 @@ const InventarioList = ({ magazzinoId }: { magazzinoId: number }) => {
 
   const [sortField, setSortField] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
-
-
+  const [actionLoading, setActionLoading] = useState(false);
 
   const { subscribe } = useWS();
 
-const fetchArticoli = async () => {
-  const res = await fetch(`${backendUrl}/api/inventario/articoli`, { credentials: 'include' });
-  const data: Articolo[] = await res.json();
+  const fetchArticoli = async () => {
+    const res = await fetch(`${backendUrl}/api/inventario/articoli`, { credentials: 'include' });
+    const data: Articolo[] = await res.json();
 
-  const filtrati = data
-    .filter((a) => a.magazzino.id === magazzinoId)
-    .sort((a, b) => a.id - b.id);  // 👈 sempre per ID crescente
+    const filtrati = data
+      .filter((a) => a.magazzino.id === magazzinoId)
+      .sort((a, b) => a.id - b.id);
 
-  let ordinati = [...filtrati];
+    let ordinati = [...filtrati];
 
-if (sortField) {
-  ordinati.sort((a, b) => {
-    const valA = (a as any)[sortField];
-    const valB = (b as any)[sortField];
+    if (sortField) {
+      ordinati.sort((a, b) => {
+        const valA = (a as any)[sortField];
+        const valB = (b as any)[sortField];
 
-    if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
-    if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
-    return 0;
-  });
-}
+        if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+        if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
 
-setArticoli(ordinati);
-
-};
-
+    setArticoli(ordinati);
+  };
 
   useEffect(() => {
     fetchArticoli();
@@ -104,55 +101,55 @@ setArticoli(ordinati);
   }, [subscribe]);
 
   useEffect(() => {
-  // Applica l’ordinamento ogni volta che cambia sortField o sortDirection
-  setArticoli((prev) => {
-    const copia = [...prev];
-    if (!sortField) return copia;
+    setArticoli((prev) => {
+      const copia = [...prev];
+      if (!sortField) return copia;
 
-    return copia.sort((a, b) => {
-      const valA = (a as any)[sortField];
-      const valB = (b as any)[sortField];
+      return copia.sort((a, b) => {
+        const valA = (a as any)[sortField];
+        const valB = (b as any)[sortField];
 
-      if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
-      if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
-      return 0;
+        if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+        if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+        return 0;
+      });
     });
-  });
-}, [sortField, sortDirection]);
+  }, [sortField, sortDirection]);
 
+  const handleDeleteClick = (articolo: Articolo) => {
+    setArticoloToDelete(articolo);
+    setConfirmDeleteOpen(true);
+  };
 
-const handleDeleteClick = (articolo: Articolo) => {
-  setArticoloToDelete(articolo);
-  setConfirmDeleteOpen(true);
-};
+  const handleConfirmDelete = async () => {
+    if (!articoloToDelete) return;
+    setActionLoading(true);
+    try {
+      await fetch(`${backendUrl}/api/inventario/articoli/${articoloToDelete.id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      setConfirmDeleteOpen(false);
+      setArticoloToDelete(null);
+      fetchArticoli();
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
-const handleConfirmDelete = async () => {
-  if (!articoloToDelete) return;
-  await fetch(`${backendUrl}/api/inventario/articoli/${articoloToDelete.id}`, {
-    method: 'DELETE',
-    credentials: 'include',
-  });
-  setConfirmDeleteOpen(false);
-  setArticoloToDelete(null);
-  fetchArticoli();
-};
+  const handleCancelDelete = () => {
+    setConfirmDeleteOpen(false);
+    setArticoloToDelete(null);
+  };
 
-const handleCancelDelete = () => {
-  setConfirmDeleteOpen(false);
-  setArticoloToDelete(null);
-};
-
-const handleSort = (field: string) => {
-  if (sortField === field) {
-    // toggle asc <-> desc
-    setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-  } else {
-    setSortField(field);
-    setSortDirection('asc');
-  }
-};
-
-
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
 
   return (
     <Paper elevation={3} sx={{ p: 3, borderRadius: 3 }}>
@@ -169,6 +166,7 @@ const handleSort = (field: string) => {
             setSelectedArticolo(null);
             setOpenArticoloForm(true);
           }}
+          disabled={actionLoading}
         >
           Nuovo Articolo
         </Button>
@@ -181,6 +179,7 @@ const handleSort = (field: string) => {
             setSelectedArticolo(null);
             setOpenMovimenti(true);
           }}
+          disabled={actionLoading}
         >
           Storico magazzino
         </Button>
@@ -188,109 +187,138 @@ const handleSort = (field: string) => {
 
       <Table size="small">
         <TableHead>
-  <TableRow>
-    <TableCell onClick={() => handleSort('nome')} sx={{ cursor: 'pointer' }}>
-      Nome {sortField === 'nome' && (sortDirection === 'asc' ? '▲' : '▼')}
-    </TableCell>
+          <TableRow>
+            <TableCell onClick={() => handleSort('nome')} sx={{ cursor: 'pointer' }}>
+              Nome {sortField === 'nome' && (sortDirection === 'asc' ? '▲' : '▼')}
+            </TableCell>
 
-    <TableCell
-  onClick={() => handleSort('descrizione')}
-  sx={{ cursor: 'pointer' }}
->
-  Descrizione {sortField === 'descrizione' && (sortDirection === 'asc' ? '▲' : '▼')}
-</TableCell>
+            <TableCell
+              onClick={() => handleSort('descrizione')}
+              sx={{ cursor: 'pointer' }}
+            >
+              Descrizione{' '}
+              {sortField === 'descrizione' && (sortDirection === 'asc' ? '▲' : '▼')}
+            </TableCell>
 
+            <TableCell onClick={() => handleSort('categoria')} sx={{ cursor: 'pointer' }}>
+              Categoria {sortField === 'categoria' && (sortDirection === 'asc' ? '▲' : '▼')}
+            </TableCell>
 
-    <TableCell onClick={() => handleSort('categoria')} sx={{ cursor: 'pointer' }}>
-      Categoria {sortField === 'categoria' && (sortDirection === 'asc' ? '▲' : '▼')}
-    </TableCell>
+            <TableCell
+              onClick={() => handleSort('quantitaMagazzino')}
+              sx={{ cursor: 'pointer' }}
+            >
+              Quantità{' '}
+              {sortField === 'quantitaMagazzino' &&
+                (sortDirection === 'asc' ? '▲' : '▼')}
+            </TableCell>
 
-    <TableCell onClick={() => handleSort('quantitaMagazzino')} sx={{ cursor: 'pointer' }}>
-      Quantità {sortField === 'quantitaMagazzino' && (sortDirection === 'asc' ? '▲' : '▼')}
-    </TableCell>
+            <TableCell
+              onClick={() => handleSort('prezzoUnitario')}
+              sx={{ cursor: 'pointer' }}
+            >
+              Prezzo{' '}
+              {sortField === 'prezzoUnitario' && (sortDirection === 'asc' ? '▲' : '▼')}
+            </TableCell>
 
-    <TableCell onClick={() => handleSort('prezzoUnitario')} sx={{ cursor: 'pointer' }}>
-      Prezzo {sortField === 'prezzoUnitario' && (sortDirection === 'asc' ? '▲' : '▼')}
-    </TableCell>
+            <TableCell
+              onClick={() => handleSort('valoreInventario')}
+              sx={{ cursor: 'pointer' }}
+            >
+              Valore inventario{' '}
+              {sortField === 'valoreInventario' &&
+                (sortDirection === 'asc' ? '▲' : '▼')}
+            </TableCell>
 
-    <TableCell onClick={() => handleSort('valoreInventario')} sx={{ cursor: 'pointer' }}>
-      Valore inventario {sortField === 'valoreInventario' && (sortDirection === 'asc' ? '▲' : '▼')}
-    </TableCell>
+            <TableCell
+              onClick={() => handleSort('livelloRiordino')}
+              sx={{ cursor: 'pointer' }}
+            >
+              Livello riordino{' '}
+              {sortField === 'livelloRiordino' &&
+                (sortDirection === 'asc' ? '▲' : '▼')}
+            </TableCell>
 
-    <TableCell onClick={() => handleSort('livelloRiordino')} sx={{ cursor: 'pointer' }}>
-      Livello riordino {sortField === 'livelloRiordino' && (sortDirection === 'asc' ? '▲' : '▼')}
-    </TableCell>
+            <TableCell
+              onClick={() => handleSort('quantitaInRiordino')}
+              sx={{ cursor: 'pointer' }}
+            >
+              Quantità in riordino{' '}
+              {sortField === 'quantitaInRiordino' &&
+                (sortDirection === 'asc' ? '▲' : '▼')}
+            </TableCell>
 
-    <TableCell onClick={() => handleSort('quantitaInRiordino')} sx={{ cursor: 'pointer' }}>
-      Quantità in riordino {sortField === 'quantitaInRiordino' && (sortDirection === 'asc' ? '▲' : '▼')}
-    </TableCell>
+            <TableCell>Azioni</TableCell>
+          </TableRow>
+        </TableHead>
 
-    <TableCell>Azioni</TableCell>
-  </TableRow>
-</TableHead>
+        <TableBody>
+          {articoli.map((articolo) => {
+            const sottoScorta =
+              typeof articolo.livelloRiordino === 'number' &&
+              articolo.livelloRiordino > 0 &&
+              articolo.quantitaMagazzino < articolo.livelloRiordino;
 
-<TableBody>
-  {articoli.map((articolo) => {
-    const sottoScorta =
-      typeof articolo.livelloRiordino === 'number' &&
-      articolo.livelloRiordino > 0 &&
-      articolo.quantitaMagazzino < articolo.livelloRiordino;
-
-    return (
-      <TableRow
-        key={articolo.id}
-        sx={
-          sottoScorta
-            ? { backgroundColor: 'rgba(255, 193, 7, 0.2)' } // giallino warning
-            : undefined
-        }
-      >
-        <TableCell>{articolo.nome}</TableCell>
-        <TableCell>{articolo.descrizione}</TableCell>
-        <TableCell>{articolo.categoria}</TableCell>
-        <TableCell>{articolo.quantitaMagazzino}</TableCell>
-        <TableCell>{articolo.prezzoUnitario} €</TableCell>
-        <TableCell>{articolo.valoreInventario} €</TableCell>
-        <TableCell>{articolo.livelloRiordino}</TableCell>
-        <TableCell>{articolo.quantitaInRiordino}</TableCell>
-        <TableCell>
-          <IconButton
-            size="small"
-            onClick={() => {
-              setSelectedArticolo(articolo);
-              setOpenMovimenti(true);
-            }}
-          >
-            <History fontSize="small" />
-          </IconButton>
-          <IconButton
-            size="small"
-            onClick={() => {
-              setSelectedArticolo(articolo);
-              setOpenMovimentoForm(true);
-            }}
-          >
-            ➕➖
-          </IconButton>
-          <IconButton
-            size="small"
-            onClick={() => {
-              setSelectedArticolo(articolo);
-              setOpenArticoloForm(true);
-            }}
-          >
-            <Edit fontSize="small" />
-          </IconButton>
-<IconButton size="small" onClick={() => handleDeleteClick(articolo)}>
-  <Delete fontSize="small" />
-</IconButton>
-
-        </TableCell>
-      </TableRow>
-    );
-  })}
-</TableBody>
-
+            return (
+              <TableRow
+                key={articolo.id}
+                sx={
+                  sottoScorta
+                    ? { backgroundColor: 'rgba(255, 193, 7, 0.2)' }
+                    : undefined
+                }
+              >
+                <TableCell>{articolo.nome}</TableCell>
+                <TableCell>{articolo.descrizione}</TableCell>
+                <TableCell>{articolo.categoria}</TableCell>
+                <TableCell>{articolo.quantitaMagazzino}</TableCell>
+                <TableCell>{articolo.prezzoUnitario} €</TableCell>
+                <TableCell>{articolo.valoreInventario} €</TableCell>
+                <TableCell>{articolo.livelloRiordino}</TableCell>
+                <TableCell>{articolo.quantitaInRiordino}</TableCell>
+                <TableCell>
+                  <IconButton
+                    size="small"
+                    onClick={() => {
+                      setSelectedArticolo(articolo);
+                      setOpenMovimenti(true);
+                    }}
+                    disabled={actionLoading}
+                  >
+                    <History fontSize="small" />
+                  </IconButton>
+                  <IconButton
+                    size="small"
+                    onClick={() => {
+                      setSelectedArticolo(articolo);
+                      setOpenMovimentoForm(true);
+                    }}
+                    disabled={actionLoading}
+                  >
+                    ➕➖
+                  </IconButton>
+                  <IconButton
+                    size="small"
+                    onClick={() => {
+                      setSelectedArticolo(articolo);
+                      setOpenArticoloForm(true);
+                    }}
+                    disabled={actionLoading}
+                  >
+                    <Edit fontSize="small" />
+                  </IconButton>
+                  <IconButton
+                    size="small"
+                    onClick={() => handleDeleteClick(articolo)}
+                    disabled={actionLoading}
+                  >
+                    <Delete fontSize="small" />
+                  </IconButton>
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
       </Table>
 
       {/* Modali */}
@@ -317,28 +345,32 @@ const handleSort = (field: string) => {
           onSaved={fetchArticoli}
         />
       )}
-      {/* Dialog conferma eliminazione articolo */}
-<Dialog
-  open={confirmDeleteOpen}
-  onClose={handleCancelDelete}
->
-  <DialogTitle>Conferma Eliminazione</DialogTitle>
-  <DialogContent>
-    <Typography>
-      Sei sicuro di voler eliminare l&apos;articolo{' '}
-      <strong>{articoloToDelete?.nome}</strong>?
-      <br />
-      Verranno eliminati anche tutti i movimenti collegati.
-    </Typography>
-  </DialogContent>
-  <DialogActions>
-    <Button onClick={handleCancelDelete}>Annulla</Button>
-    <Button color="error" variant="contained" onClick={handleConfirmDelete}>
-      Elimina
-    </Button>
-  </DialogActions>
-</Dialog>
 
+      {/* Dialog conferma eliminazione articolo */}
+      <Dialog open={confirmDeleteOpen} onClose={handleCancelDelete}>
+        <DialogTitle>Conferma Eliminazione</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Sei sicuro di voler eliminare l&apos;articolo{' '}
+            <strong>{articoloToDelete?.nome}</strong>?
+            <br />
+            Verranno eliminati anche tutti i movimenti collegati.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelDelete} disabled={actionLoading}>
+            Annulla
+          </Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={handleConfirmDelete}
+            disabled={actionLoading}
+          >
+            Elimina
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Paper>
   );
 };

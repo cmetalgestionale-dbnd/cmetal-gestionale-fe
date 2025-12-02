@@ -44,7 +44,9 @@ const ClientManagement = ({ readOnly = false }: { readOnly?: boolean }) => {
   const [deletedOpen, setDeletedOpen] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [clienteToDelete, setClienteToDelete] = useState<Cliente | null>(null);
-  const [searchTerm, setSearchTerm] = useState(''); // 🔍 nuovo stato per ricerca
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const [actionLoading, setActionLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     nome: '',
@@ -56,18 +58,22 @@ const ClientManagement = ({ readOnly = false }: { readOnly?: boolean }) => {
 
   const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
 
-  const fetchClienti = async () => {
-    const res = await fetch(`${backendUrl}/api/clienti`, { credentials: 'include' });
-    const data: Cliente[] = await res.json();
-    setClienti(data.filter(c => !c.isDeleted));
-    setDeletedClienti(data.filter(c => c.isDeleted));
-  };
+const fetchClienti = async () => {
+  const existingRes = await fetch(`${backendUrl}/api/clienti/existing`, { credentials: 'include' });
+  setClienti(await existingRes.json());
+};
+
+const fetchDeletedClienti = async () => {
+  const deletedRes = await fetch(`${backendUrl}/api/clienti/deleted`, { credentials: 'include' });
+  setDeletedClienti(await deletedRes.json());
+};
+
 
   useEffect(() => {
     fetchClienti();
   }, []);
 
-    const { subscribe } = useWS();
+  const { subscribe } = useWS();
 
   useEffect(() => {
     const unsubscribe = subscribe((msg: IMessage) => {
@@ -83,7 +89,6 @@ const ClientManagement = ({ readOnly = false }: { readOnly?: boolean }) => {
     });
     return () => unsubscribe();
   }, [subscribe]);
-
 
   const handleOpenForm = (cliente?: Cliente) => {
     if (cliente) {
@@ -119,6 +124,8 @@ const ClientManagement = ({ readOnly = false }: { readOnly?: boolean }) => {
   };
 
   const handleSubmit = async () => {
+    setActionLoading(true);
+
     const method = editingCliente ? 'PUT' : 'POST';
     const url = editingCliente
       ? `${backendUrl}/api/clienti/${editingCliente.id}`
@@ -132,7 +139,9 @@ const ClientManagement = ({ readOnly = false }: { readOnly?: boolean }) => {
     });
 
     handleCloseForm();
-    fetchClienti();
+    await fetchClienti();
+
+    setActionLoading(false);
   };
 
   const handleDeleteClick = (cliente: Cliente) => {
@@ -142,13 +151,20 @@ const ClientManagement = ({ readOnly = false }: { readOnly?: boolean }) => {
 
   const handleConfirmDelete = async () => {
     if (!clienteToDelete) return;
+
+    setActionLoading(true);
+
     await fetch(`${backendUrl}/api/clienti/${clienteToDelete.id}`, {
       method: 'DELETE',
       credentials: 'include',
     });
+
     setConfirmDeleteOpen(false);
     setClienteToDelete(null);
-    fetchClienti();
+
+    await fetchClienti();
+
+    setActionLoading(false);
   };
 
   const handleCancelDelete = () => {
@@ -158,6 +174,8 @@ const ClientManagement = ({ readOnly = false }: { readOnly?: boolean }) => {
 
   const handleRestore = async (cliente: Cliente) => {
     if (!cliente.id) return;
+
+    setActionLoading(true);
 
     const payload = {
       nome: cliente.nome,
@@ -175,11 +193,12 @@ const ClientManagement = ({ readOnly = false }: { readOnly?: boolean }) => {
       body: JSON.stringify(payload),
     });
 
-    fetchClienti();
+    await fetchClienti();
     setDeletedOpen(false);
+
+    setActionLoading(false);
   };
 
-  // 🔎 Filtraggio clienti per nome
   const filteredClienti = clienti.filter(c =>
     c.nome.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -193,20 +212,24 @@ const ClientManagement = ({ readOnly = false }: { readOnly?: boolean }) => {
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
         {!readOnly && (
           <>
-            <Button variant="contained" size="small" onClick={() => handleOpenForm()}>
+            <Button variant="contained" size="small" onClick={() => handleOpenForm()} disabled={actionLoading}>
               Aggiungi Cliente
             </Button>
             <Button
               variant="outlined"
               size="small"
-              onClick={() => setDeletedOpen(true)}
+onClick={async () => {
+  await fetchDeletedClienti();
+  setDeletedOpen(true);
+}}
+
+              disabled={actionLoading}
             >
               Clienti cancellati
             </Button>
           </>
         )}
 
-        {/* 🔍 Campo ricerca */}
         <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
           <Search fontSize="small" />
           <TextField
@@ -214,6 +237,7 @@ const ClientManagement = ({ readOnly = false }: { readOnly?: boolean }) => {
             size="small"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+            disabled={actionLoading}
           />
         </Box>
       </Box>
@@ -240,10 +264,10 @@ const ClientManagement = ({ readOnly = false }: { readOnly?: boolean }) => {
                 <TableCell>{c.indirizzo}</TableCell>
                 {!readOnly && (
                   <TableCell>
-                    <IconButton size="small" onClick={() => handleOpenForm(c)}>
+                    <IconButton size="small" onClick={() => handleOpenForm(c)} disabled={actionLoading}>
                       <Edit fontSize="small" />
                     </IconButton>
-                    <IconButton size="small" onClick={() => handleDeleteClick(c)}>
+                    <IconButton size="small" onClick={() => handleDeleteClick(c)} disabled={actionLoading}>
                       <Delete fontSize="small" />
                     </IconButton>
                   </TableCell>
@@ -254,23 +278,21 @@ const ClientManagement = ({ readOnly = false }: { readOnly?: boolean }) => {
         </Table>
       </TableContainer>
 
-      {/* Form cliente */}
       <Dialog open={open} onClose={handleCloseForm} fullWidth maxWidth="sm">
         <DialogTitle>{editingCliente ? 'Modifica Cliente' : 'Nuovo Cliente'}</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-          <TextField label="Nome" name="nome" value={formData.nome} onChange={handleChange} size="small" fullWidth />
-          <TextField label="Riferimento" name="riferimento" value={formData.riferimento} onChange={handleChange} size="small" fullWidth />
-          <TextField label="Telefono" name="telefono" value={formData.telefono} onChange={handleChange} size="small" fullWidth />
-          <TextField label="Email" name="email" value={formData.email} onChange={handleChange} size="small" fullWidth />
-          <TextField label="Indirizzo" name="indirizzo" value={formData.indirizzo} onChange={handleChange} size="small" fullWidth />
+          <TextField label="Nome" name="nome" value={formData.nome} onChange={handleChange} size="small" fullWidth disabled={actionLoading} />
+          <TextField label="Riferimento" name="riferimento" value={formData.riferimento} onChange={handleChange} size="small" fullWidth disabled={actionLoading} />
+          <TextField label="Telefono" name="telefono" value={formData.telefono} onChange={handleChange} size="small" fullWidth disabled={actionLoading} />
+          <TextField label="Email" name="email" value={formData.email} onChange={handleChange} size="small" fullWidth disabled={actionLoading} />
+          <TextField label="Indirizzo" name="indirizzo" value={formData.indirizzo} onChange={handleChange} size="small" fullWidth disabled={actionLoading} />
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseForm} size="small">Annulla</Button>
-          <Button onClick={handleSubmit} size="small" variant="contained">Salva</Button>
+          <Button onClick={handleCloseForm} size="small" disabled={actionLoading}>Annulla</Button>
+          <Button onClick={handleSubmit} size="small" variant="contained" disabled={actionLoading}>Salva</Button>
         </DialogActions>
       </Dialog>
 
-      {/* Conferma eliminazione */}
       <Dialog open={confirmDeleteOpen} onClose={handleCancelDelete}>
         <DialogTitle>Conferma Eliminazione</DialogTitle>
         <DialogContent>
@@ -279,12 +301,11 @@ const ClientManagement = ({ readOnly = false }: { readOnly?: boolean }) => {
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCancelDelete} size="small">Annulla</Button>
-          <Button onClick={handleConfirmDelete} size="small" color="error" variant="contained">Elimina</Button>
+          <Button onClick={handleCancelDelete} size="small" disabled={actionLoading}>Annulla</Button>
+          <Button onClick={handleConfirmDelete} size="small" color="error" variant="contained" disabled={actionLoading}>Elimina</Button>
         </DialogActions>
       </Dialog>
 
-      {/* Modale clienti cancellati */}
       <Dialog open={deletedOpen} onClose={() => setDeletedOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>Clienti Cancellati</DialogTitle>
         <DialogContent>
@@ -302,7 +323,7 @@ const ClientManagement = ({ readOnly = false }: { readOnly?: boolean }) => {
                   <TableCell>{c.nome}</TableCell>
                   <TableCell>{c.riferimento}</TableCell>
                   <TableCell>
-                    <Button size="small" onClick={() => handleRestore(c)}>Ripristina</Button>
+                    <Button size="small" onClick={() => handleRestore(c)} disabled={actionLoading}>Ripristina</Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -310,7 +331,7 @@ const ClientManagement = ({ readOnly = false }: { readOnly?: boolean }) => {
           </Table>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeletedOpen(false)}>Chiudi</Button>
+          <Button onClick={() => setDeletedOpen(false)} disabled={actionLoading}>Chiudi</Button>
         </DialogActions>
       </Dialog>
     </Paper>

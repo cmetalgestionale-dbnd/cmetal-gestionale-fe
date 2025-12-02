@@ -112,28 +112,35 @@ const AssegnazioniPage = () => {
   );
 
   const [loadingAssignments, setLoadingAssignments] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
 
 const loadCommesse = async () => {
   if (commesse.length > 0) return; // se già caricate, non rifare fetch
+  setActionLoading(true);
   try {
-    const res = await fetch(`${backendUrl}/api/commesse`, { credentials: 'include' });
+    const res = await fetch(`${backendUrl}/api/commesse/existing`, { credentials: 'include' });
     if (!res.ok) throw new Error('Errore fetch commesse');
     const data: Commessa[] = await res.json();
     setCommesse(data);
   } catch (e) {
     setSnack({ open: true, message: 'Errore caricando commesse', severity: 'error' });
+  } finally {
+    setActionLoading(false);
   }
 };
 
 const loadClienti = async () => {
   if (clienti.length > 0) return; // se già caricati, non rifare fetch
+  setActionLoading(true);
   try {
-    const res = await fetch(`${backendUrl}/api/clienti`, { credentials: 'include' });
+    const res = await fetch(`${backendUrl}/api/clienti/existing`, { credentials: 'include' });
     if (!res.ok) throw new Error('Errore fetch clienti');
     const data: Cliente[] = await res.json();
     setClienti(data);
   } catch (e) {
     setSnack({ open: true, message: 'Errore caricando clienti', severity: 'error' });
+  } finally {
+    setActionLoading(false);
   }
 };
 
@@ -249,13 +256,20 @@ useEffect(() => {
 
   // azioni dipendente
   const handleStart = async (a: Assegnazione) => {
-    const res = await fetch(`${backendUrl}/api/assegnazioni/${a.id}/start`, { method: 'PUT', credentials: 'include' });
-    if (!res.ok) {
-      setSnack({ open: true, message: 'Errore avviando l\'assegnazione', severity: 'error' });
-      return;
+    setActionLoading(true);
+    try {
+      const res = await fetch(`${backendUrl}/api/assegnazioni/${a.id}/start`, { method: 'PUT', credentials: 'include' });
+      if (!res.ok) {
+        setSnack({ open: true, message: 'Errore avviando l\'assegnazione', severity: 'error' });
+        return;
+      }
+      setAssegnazioni(prev => prev.map(x => (x.id === a.id ? { ...x, startAt: new Date().toISOString() } : x)));
+      setSnack({ open: true, message: 'Assegnazione avviata', severity: 'success' });
+    } catch (e) {
+      setSnack({ open: true, message: 'Errore di rete', severity: 'error' });
+    } finally {
+      setActionLoading(false);
     }
-    setAssegnazioni(prev => prev.map(x => (x.id === a.id ? { ...x, startAt: new Date().toISOString() } : x)));
-    setSnack({ open: true, message: 'Assegnazione avviata', severity: 'success' });
   };
 
   const handleEnd = async (a: Assegnazione) => {
@@ -263,13 +277,20 @@ useEffect(() => {
       setSnack({ open: true, message: 'Devi caricare un allegato prima di terminare', severity: 'error' });
       return;
     }
-    const res = await fetch(`${backendUrl}/api/assegnazioni/${a.id}/end`, { method: 'PUT', credentials: 'include' });
-    if (!res.ok) {
-      setSnack({ open: true, message: 'Errore terminando l\'assegnazione', severity: 'error' });
-      return;
+    setActionLoading(true);
+    try {
+      const res = await fetch(`${backendUrl}/api/assegnazioni/${a.id}/end`, { method: 'PUT', credentials: 'include' });
+      if (!res.ok) {
+        setSnack({ open: true, message: 'Errore terminando l\'assegnazione', severity: 'error' });
+        return;
+      }
+      setAssegnazioni(prev => prev.map(x => (x.id === a.id ? { ...x, endAt: new Date().toISOString() } : x)));
+      setSnack({ open: true, message: 'Assegnazione terminata', severity: 'success' });
+    } catch (e) {
+      setSnack({ open: true, message: 'Errore di rete', severity: 'error' });
+    } finally {
+      setActionLoading(false);
     }
-    setAssegnazioni(prev => prev.map(x => (x.id === a.id ? { ...x, endAt: new Date().toISOString() } : x)));
-    setSnack({ open: true, message: 'Assegnazione terminata', severity: 'success' });
   };
 
 const handleUploadFoto = async (id: number, file: File) => {
@@ -312,6 +333,7 @@ const handleUploadFoto = async (id: number, file: File) => {
   const fd = new FormData();
   fd.append('file', fileToUpload);
 
+  setActionLoading(true);
   try {
     const res = await fetch(`${backendUrl}/api/assegnazioni/${id}/upload-foto`, {
       method: 'POST',
@@ -333,6 +355,8 @@ const handleUploadFoto = async (id: number, file: File) => {
     }
   } catch (e) {
     setSnack({ open: true, message: "Errore di rete durante l'upload", severity: 'error' });
+  } finally {
+    setActionLoading(false);
   }
 };
 
@@ -354,6 +378,7 @@ const handleUploadFoto = async (id: number, file: File) => {
   };
 
   const handleDelete = async (id: number) => {
+    setActionLoading(true);
     try {
       const res = await fetch(`${backendUrl}/api/assegnazioni/${id}`, {
         method: 'DELETE',
@@ -367,6 +392,8 @@ const handleUploadFoto = async (id: number, file: File) => {
       setSnack({ open: true, message: 'Assegnazione eliminata', severity: 'success' });
     } catch (e) {
       setSnack({ open: true, message: 'Errore di rete', severity: 'error' });
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -387,32 +414,39 @@ const handleUploadFoto = async (id: number, file: File) => {
     const method = editing ? 'PUT' : 'POST';
     const url = editing ? `${backendUrl}/api/assegnazioni/${editing.id}` : `${backendUrl}/api/assegnazioni`;
 
-    const res = await fetch(url, {
-      method,
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
+    setActionLoading(true);
+    try {
+      const res = await fetch(url, {
+        method,
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
 
-    if (!res.ok) {
-      setSnack({ open: true, message: 'Errore durante il salvataggio', severity: 'error' });
-      return;
-    }
-
-    setOpenForm(false);
-    setEditing(null);
-
-    if (selectedDipendente) {
-      const dateParam = selectedDate.toISOString().split('T')[0];
-      const refetchUrl = `${backendUrl}/api/assegnazioni?utenteId=${selectedDipendente}&date=${dateParam}`;
-
-      const refetch = await fetch(refetchUrl, { credentials: 'include' });
-      if (refetch.ok) {
-        const data = await refetch.json();
-        data.sort((a: Assegnazione, b: Assegnazione) => new Date(a.assegnazioneAt).getTime() - new Date(b.assegnazioneAt).getTime());
-        setAssegnazioni(data);
-        setSnack({ open: true, message: 'Assegnazione salvata', severity: 'success' });
+      if (!res.ok) {
+        setSnack({ open: true, message: 'Errore durante il salvataggio', severity: 'error' });
+        return;
       }
+
+      setOpenForm(false);
+      setEditing(null);
+
+      if (selectedDipendente) {
+        const dateParam = selectedDate.toISOString().split('T')[0];
+        const refetchUrl = `${backendUrl}/api/assegnazioni?utenteId=${selectedDipendente}&date=${dateParam}`;
+
+        const refetch = await fetch(refetchUrl, { credentials: 'include' });
+        if (refetch.ok) {
+          const data = await refetch.json();
+          data.sort((a: Assegnazione, b: Assegnazione) => new Date(a.assegnazioneAt).getTime() - new Date(b.assegnazioneAt).getTime());
+          setAssegnazioni(data);
+          setSnack({ open: true, message: 'Assegnazione salvata', severity: 'success' });
+        }
+      }
+    } catch (e) {
+      setSnack({ open: true, message: 'Errore di rete', severity: 'error' });
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -452,7 +486,7 @@ const handleUploadFoto = async (id: number, file: File) => {
       size="small"
       value={selectedDipendente ?? ''}
       onChange={e => setSelectedDipendente(Number(e.target.value))}
-      disabled={ruolo === 'DIPENDENTE'}
+      disabled={ruolo === 'DIPENDENTE' || actionLoading}
       sx={{ width: 250, minWidth: 120 }}
     >
       {dipendenti.map(d => (
@@ -463,7 +497,7 @@ const handleUploadFoto = async (id: number, file: File) => {
     </TextField>
 
     <Box display="flex" alignItems="center" gap={2}>
-<IconButton onClick={() => changeDate(-1)} disabled={loadingAssignments}>
+<IconButton onClick={() => changeDate(-1)} disabled={loadingAssignments || actionLoading}>
   <ArrowBack />
 </IconButton>
       <Typography fontWeight={600}>
@@ -473,13 +507,13 @@ const handleUploadFoto = async (id: number, file: File) => {
           month: '2-digit',
         })}
       </Typography>
-<IconButton onClick={() => changeDate(1)} disabled={loadingAssignments}>
+<IconButton onClick={() => changeDate(1)} disabled={loadingAssignments || actionLoading}>
   <ArrowForward />
 </IconButton>
     </Box>
 
-    {ruolo === 'ADMIN' && (
-      <Button startIcon={<Add />} variant="contained" size="small" onClick={() => handleOpenForm()}>
+    {(ruolo === 'ADMIN' || ruolo === 'SUPERVISORE') && (
+      <Button startIcon={<Add />} variant="contained" size="small" onClick={() => handleOpenForm()} disabled={actionLoading}>
         Nuova assegnazione
       </Button>
     )}
@@ -538,16 +572,16 @@ const handleUploadFoto = async (id: number, file: File) => {
               )}
             </CardContent>
             <CardActions>
-                {ruolo === 'ADMIN' && (
+                {(ruolo === 'ADMIN' || ruolo === 'SUPERVISORE') && (
                   <>
                     <Tooltip title="Modifica">
-                      <IconButton onClick={() => handleOpenForm(a)}>
+                      <IconButton onClick={() => handleOpenForm(a)} disabled={actionLoading}>
                         <Edit />
                       </IconButton>
                     </Tooltip>
 
                     <Tooltip title="Elimina">
-                      <IconButton onClick={() => setConfirmDelete(a)}>
+                      <IconButton onClick={() => setConfirmDelete(a)} disabled={actionLoading}>
                         <Delete />
                       </IconButton>
                     </Tooltip>
@@ -555,7 +589,7 @@ const handleUploadFoto = async (id: number, file: File) => {
                 )}
 
                 {ruolo === 'DIPENDENTE' && !a.startAt && (
-                  <Button size="small" onClick={() => setConfirmAction({ tipo: 'start', assegnazione: a })}>
+                  <Button size="small" onClick={() => setConfirmAction({ tipo: 'start', assegnazione: a })} disabled={actionLoading}>
                     Inizia
                   </Button>
                 )}
@@ -563,7 +597,7 @@ const handleUploadFoto = async (id: number, file: File) => {
                   <>
                     <IconButton
                       component="label"
-                      disabled={!!a.fotoAllegato}
+                      disabled={!!a.fotoAllegato || actionLoading}
                       title={a.fotoAllegato ? 'Foto già caricata' : 'Carica allegato prima di terminare'}
                     >
                       <PhotoCamera />
@@ -577,7 +611,7 @@ const handleUploadFoto = async (id: number, file: File) => {
                     <Button
                       size="small"
                       onClick={() => setConfirmAction({ tipo: 'end', assegnazione: a })}
-                      disabled={!a.fotoAllegato}
+                      disabled={!a.fotoAllegato || actionLoading}
                     >
                       Termina
                     </Button>
@@ -591,6 +625,7 @@ const handleUploadFoto = async (id: number, file: File) => {
                       href={`${backendUrl}/api/commesse/${a.commessa.id}/allegato`}
                       target="_blank"
                       rel="noopener noreferrer"
+                      disabled={actionLoading}
                     >
                       <PictureAsPdf />
                     </IconButton>
@@ -608,6 +643,7 @@ const handleUploadFoto = async (id: number, file: File) => {
                       href={`${backendUrl}/api/assegnazioni/${a.id}/foto`}
                       target="_blank"
                       rel="noopener noreferrer"
+                      disabled={actionLoading}
                     >
                       <PhotoCamera />
                     </IconButton>
@@ -641,6 +677,7 @@ const handleUploadFoto = async (id: number, file: File) => {
                 setOpenCommessaModal(true);
                 loadCommesse();
               }}
+              disabled={actionLoading}
             >
               Seleziona
             </Button>
@@ -661,6 +698,7 @@ const handleUploadFoto = async (id: number, file: File) => {
                 setOpenClienteModal(true);
                 loadClienti();
               }}
+              disabled={actionLoading}
             >
               Seleziona
             </Button>
@@ -676,8 +714,8 @@ const handleUploadFoto = async (id: number, file: File) => {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenForm(false)}>Annulla</Button>
-          <Button onClick={handleSubmit} variant="contained">
+          <Button onClick={() => setOpenForm(false)} disabled={actionLoading}>Annulla</Button>
+          <Button onClick={handleSubmit} variant="contained" disabled={actionLoading}>
             Salva
           </Button>
         </DialogActions>
@@ -721,6 +759,7 @@ const handleUploadFoto = async (id: number, file: File) => {
                       e.stopPropagation();
                       window.open(`${backendUrl}/api/commesse/${c.id}/allegato`, '_blank');
                     }}
+                    disabled={actionLoading}
                   >
                     <PictureAsPdf fontSize="small" />
                   </IconButton>
@@ -773,10 +812,11 @@ const handleUploadFoto = async (id: number, file: File) => {
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setConfirmDelete(null)}>Annulla</Button>
+          <Button onClick={() => setConfirmDelete(null)} disabled={actionLoading}>Annulla</Button>
           <Button
             variant="contained"
             color="error"
+            disabled={actionLoading}
             onClick={async () => {
               if (!confirmDelete) return;
               await handleDelete(confirmDelete.id);
@@ -798,9 +838,10 @@ const handleUploadFoto = async (id: number, file: File) => {
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setConfirmAction(null)}>Annulla</Button>
+          <Button onClick={() => setConfirmAction(null)} disabled={actionLoading}>Annulla</Button>
           <Button
             variant="contained"
+            disabled={actionLoading}
             onClick={async () => {
               if (!confirmAction) return;
               if (confirmAction.tipo === 'start') await handleStart(confirmAction.assegnazione);

@@ -40,7 +40,7 @@ const Utenze = () => {
 
   if (loading) {
     return (
-      <PageContainer title="Utenze" description="">
+      <PageContainer title="Caricamento..." description="">
         <Box>Caricamento...</Box>
       </PageContainer>
     );
@@ -60,7 +60,7 @@ const Utenze = () => {
   }
 
   return (
-    <PageContainer title="Gestione Utenze" description="Gestione Utenze">
+    <PageContainer title="Commesse" description="Commesse">
       <Grid container spacing={3}>
         <Grid>
           <CommessaManagement />

@@ -26,6 +26,7 @@ const MovimentoFormModal = ({
 }) => {
   const [quantita, setQuantita] = useState<string>('');
   const [descrizione, setDescrizione] = useState('');
+  const [actionLoading, setActionLoading] = useState(false);
 
   // reset ogni volta che apro la modale
   useEffect(() => {
@@ -51,15 +52,20 @@ const MovimentoFormModal = ({
       movimentoAt: new Date().toISOString(),
     };
 
-    await fetch(`${backendUrl}/api/inventario/movimenti`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
+    setActionLoading(true);
+    try {
+      await fetch(`${backendUrl}/api/inventario/movimenti`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
 
-    onClose();
-    onSaved();
+      onClose();
+      onSaved();
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   // 🔁 Riordino: aggiunge alla quantità dell'articolo la "quantità in riordino"
@@ -68,7 +74,6 @@ const MovimentoFormModal = ({
     const daRiordino = articolo.quantitaInRiordino ?? 0;
     if (!daRiordino || daRiordino <= 0) return;
 
-    // 1) Movimento di carico
     const movimentoPayload = {
       inventario: { id: articolo.id },
       quantita: daRiordino,
@@ -76,15 +81,20 @@ const MovimentoFormModal = ({
       movimentoAt: new Date().toISOString(),
     };
 
-    await fetch(`${backendUrl}/api/inventario/movimenti`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(movimentoPayload),
-    });
+    setActionLoading(true);
+    try {
+      await fetch(`${backendUrl}/api/inventario/movimenti`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(movimentoPayload),
+      });
 
-    onClose();
-    onSaved();
+      onClose();
+      onSaved();
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   return (
@@ -110,13 +120,23 @@ const MovimentoFormModal = ({
       </DialogContent>
 
       <DialogActions sx={{ display: 'flex', justifyContent: 'space-between' }}>
-        <Button onClick={onClose}>Annulla</Button>
+        <Button onClick={onClose} disabled={actionLoading}>
+          Annulla
+        </Button>
 
         <Box display="flex" gap={1}>
-          <Button variant="outlined" onClick={handleRiordinoDaQuantitaInRiordino}>
+          <Button
+            variant="outlined"
+            onClick={handleRiordinoDaQuantitaInRiordino}
+            disabled={actionLoading}
+          >
             Registra riordino da quantità in riordino
           </Button>
-          <Button variant="contained" onClick={handleSubmitMovimento}>
+          <Button
+            variant="contained"
+            onClick={handleSubmitMovimento}
+            disabled={actionLoading}
+          >
             Registra movimento
           </Button>
         </Box>

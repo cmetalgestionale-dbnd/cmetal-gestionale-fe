@@ -33,7 +33,6 @@ interface Movimento {
   };
 }
 
-
 const MovimentiModal = ({
   open,
   onClose,
@@ -50,45 +49,44 @@ const MovimentiModal = ({
   const [movimenti, setMovimenti] = useState<Movimento[]>([]);
   const [from, setFrom] = useState<string>('');
   const [to, setTo] = useState<string>('');
+  const [actionLoading, setActionLoading] = useState(false);
 
-const fetchMovimenti = async (fromParam?: string, toParam?: string) => {
-  const f = fromParam ?? from;
-  const t = toParam ?? to;
+  const fetchMovimenti = async (fromParam?: string, toParam?: string) => {
+    const f = fromParam ?? from;
+    const t = toParam ?? to;
 
-  const params = new URLSearchParams();
-  if (f) params.append('from', f);
-  if (t) params.append('to', t);
+    const params = new URLSearchParams();
+    if (f) params.append('from', f);
+    if (t) params.append('to', t);
 
-  let url: string;
-  if (articolo && articolo.id) {
-    url = `${backendUrl}/api/inventario/movimenti/articolo/${articolo.id}`;
-  } else {
-    url = `${backendUrl}/api/inventario/movimenti/magazzino/${magazzinoId}`;
-  }
+    let url: string;
+    if (articolo && articolo.id) {
+      url = `${backendUrl}/api/inventario/movimenti/articolo/${articolo.id}`;
+    } else {
+      url = `${backendUrl}/api/inventario/movimenti/magazzino/${magazzinoId}`;
+    }
 
-  const res = await fetch(`${url}?${params.toString()}`, { credentials: 'include' });
-  const data = await res.json();
-  setMovimenti(data);
-};
-
+    const res = await fetch(`${url}?${params.toString()}`, { credentials: 'include' });
+    const data = await res.json();
+    setMovimenti(data);
+  };
 
   // reset filtri e lista ad ogni apertura
-useEffect(() => {
-  if (!open) return;
+  useEffect(() => {
+    if (!open) return;
 
-  const now = new Date();
-  const inizio = new Date(now.getFullYear(), now.getMonth(), 1);
-  const fine = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const now = new Date();
+    const inizio = new Date(now.getFullYear(), now.getMonth(), 1);
+    const fine = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
-  const defaultFrom = inizio.toISOString().split('T')[0];
-  const defaultTo = fine.toISOString().split('T')[0];
+    const defaultFrom = inizio.toISOString().split('T')[0];
+    const defaultTo = fine.toISOString().split('T')[0];
 
-  setFrom(defaultFrom);
-  setTo(defaultTo);
-  setMovimenti([]);
-  fetchMovimenti(defaultFrom, defaultTo);
-}, [open, articolo, magazzinoId]);
-
+    setFrom(defaultFrom);
+    setTo(defaultTo);
+    setMovimenti([]);
+    fetchMovimenti(defaultFrom, defaultTo);
+  }, [open, articolo, magazzinoId]);
 
   // refresh via WS
   useEffect(() => {
@@ -96,10 +94,9 @@ useEffect(() => {
       try {
         const payload = JSON.parse(msg.body);
         if (payload.tipo === 'REFRESH' || payload.tipoEvento === 'REFRESH') {
-if (open) {
-  fetchMovimenti();
-}
-
+          if (open) {
+            fetchMovimenti();
+          }
         }
       } catch {}
     });
@@ -113,30 +110,42 @@ if (open) {
 
   const titolo = articolo ? `Movimenti — ${articolo.nome}` : 'Movimenti Magazzino';
 
-  // 3) bottone per generare report PDF (stub)
-const handleGeneratePdf = async () => {
-  const params = new URLSearchParams();
-  if (from) params.append("from", from);
-  if (to) params.append("to", to);
+  const handleGeneratePdf = async () => {
+    const params = new URLSearchParams();
+    if (from) params.append('from', from);
+    if (to) params.append('to', to);
 
-  const res = await fetch(
-    `${backendUrl}/api/inventario/movimenti/magazzino/${magazzinoId}/report/pdf?${params}`,
-    { credentials: "include" }
-  );
+    setActionLoading(true);
+    try {
+      const res = await fetch(
+        `${backendUrl}/api/inventario/movimenti/magazzino/${magazzinoId}/report/pdf?${params}`,
+        { credentials: 'include' }
+      );
 
-  if (!res.ok) {
-    alert("Errore durante la generazione del PDF");
-    return;
-  }
+      if (!res.ok) {
+        alert('Errore durante la generazione del PDF');
+        return;
+      }
 
-  const blob = await res.blob();
-  const url = window.URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `report-magazzino-${magazzinoId}.pdf`;
-  link.click();
-};
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `report-magazzino-${magazzinoId}.pdf`;
+      link.click();
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
+  const handleAggiornaClick = async () => {
+    setActionLoading(true);
+    try {
+      await fetchMovimenti();
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
@@ -161,20 +170,21 @@ const handleGeneratePdf = async () => {
             InputLabelProps={{ shrink: true }}
           />
 
-<Button
-  variant="outlined"
-  size="small"
-  onClick={() => fetchMovimenti()}
->
-  Aggiorna
-</Button>
-
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={handleAggiornaClick}
+            disabled={actionLoading}
+          >
+            Aggiorna
+          </Button>
 
           {!articolo && (
             <Button
               variant="contained"
               size="small"
               onClick={handleGeneratePdf}
+              disabled={actionLoading}
             >
               Genera PDF
             </Button>
@@ -182,37 +192,31 @@ const handleGeneratePdf = async () => {
         </Box>
 
         <Table size="small">
-<TableHead>
-  <TableRow>
-    {!articolo && <TableCell>Articolo</TableCell>}
-    <TableCell>Data</TableCell>
-    <TableCell>Quantità</TableCell>
-    <TableCell>Descrizione</TableCell>
-  </TableRow>
-</TableHead>
+          <TableHead>
+            <TableRow>
+              {!articolo && <TableCell>Articolo</TableCell>}
+              <TableCell>Data</TableCell>
+              <TableCell>Quantità</TableCell>
+              <TableCell>Descrizione</TableCell>
+            </TableRow>
+          </TableHead>
 
-<TableBody>
-  {movFiltrati.map((m) => (
-    <TableRow key={m.id}>
-      
-      {!articolo && (
-        <TableCell>{m.inventario?.nome || '-'}</TableCell>
-      )}
+          <TableBody>
+            {movFiltrati.map((m) => (
+              <TableRow key={m.id}>
+                {!articolo && <TableCell>{m.inventario?.nome || '-'}</TableCell>}
 
-      <TableCell>
-        {new Date(m.movimentoAt).toLocaleString()}
-      </TableCell>
+                <TableCell>{new Date(m.movimentoAt).toLocaleString()}</TableCell>
 
-      <TableCell
-        style={{ color: m.quantita > 0 ? 'green' : 'red', fontWeight: 600 }}
-      >
-        {m.quantita}
-      </TableCell>
+                <TableCell
+                  style={{ color: m.quantita > 0 ? 'green' : 'red', fontWeight: 600 }}
+                >
+                  {m.quantita}
+                </TableCell>
 
-      <TableCell>{m.descrizione || '-'}</TableCell>
-    </TableRow>
-  ))}
-
+                <TableCell>{m.descrizione || '-'}</TableCell>
+              </TableRow>
+            ))}
 
             {movFiltrati.length === 0 && (
               <TableRow>
@@ -228,7 +232,9 @@ const handleGeneratePdf = async () => {
       </DialogContent>
 
       <DialogActions>
-        <Button onClick={onClose}>Chiudi</Button>
+        <Button onClick={onClose} disabled={actionLoading}>
+          Chiudi
+        </Button>
       </DialogActions>
     </Dialog>
   );

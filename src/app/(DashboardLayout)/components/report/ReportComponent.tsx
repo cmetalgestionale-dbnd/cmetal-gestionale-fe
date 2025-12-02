@@ -6,14 +6,19 @@ import DashboardCard from '@/app/(DashboardLayout)/components/shared/DashboardCa
 
 const StampaPdfAssegnazioni = () => {
   const [data, setData] = useState<string>('');
+  const [actionLoading, setActionLoading] = useState(false);
 
   const downloadPdf = () => {
+    setActionLoading(true);
+
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
     const url = data
       ? `${backendUrl}/api/assegnazioni/report/pdf?data=${data}`
       : `${backendUrl}/api/assegnazioni/report/pdf`;
 
     window.open(url, '_blank');
+
+    setActionLoading(false);
   }
 
   return (
@@ -31,8 +36,9 @@ const StampaPdfAssegnazioni = () => {
           value={data}
           onChange={e => setData(e.target.value)}
           InputLabelProps={{ shrink: true }}
+          disabled={actionLoading}
         />
-        <Button variant="contained" onClick={downloadPdf}>
+        <Button variant="contained" onClick={downloadPdf} disabled={actionLoading}>
           Scarica PDF
         </Button>
       </Box>

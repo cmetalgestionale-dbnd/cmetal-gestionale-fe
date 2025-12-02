@@ -22,7 +22,7 @@ interface Articolo {
   livelloRiordino: number;
   quantitaInRiordino: number;
   fuoriProduzione: boolean;
-  quantitaMagazzino?: number; // per non perderla in update
+  quantitaMagazzino?: number;
 }
 
 const ArticoloFormModal = ({
@@ -49,6 +49,7 @@ const ArticoloFormModal = ({
   });
 
   const [categorie, setCategorie] = useState<string[]>([]);
+  const [actionLoading, setActionLoading] = useState(false);
 
   const fetchCategorie = async () => {
     const res = await fetch(`${backendUrl}/api/inventario/articoli`, {
@@ -64,7 +65,7 @@ const ArticoloFormModal = ({
     if (open) fetchCategorie();
   }, [open]);
 
-    useEffect(() => {
+  useEffect(() => {
     if (!open) return;
 
     if (articolo) {
@@ -91,7 +92,6 @@ const ArticoloFormModal = ({
     }
   }, [open, articolo]);
 
-
   const handleSubmit = async () => {
     const method = articolo ? 'PUT' : 'POST';
     const url = articolo
@@ -103,20 +103,24 @@ const ArticoloFormModal = ({
       magazzino: { id: magazzinoId },
     };
 
-    // se sto modificando, NON devo perdere la quantità in magazzino
     if (articolo && typeof articolo.quantitaMagazzino === 'number') {
       payload.quantitaMagazzino = articolo.quantitaMagazzino;
     }
 
-    await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(payload),
-    });
+    setActionLoading(true);
+    try {
+      await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload),
+      });
 
-    onClose();
-    onSaved();
+      onClose();
+      onSaved();
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   return (
@@ -135,19 +139,10 @@ const ArticoloFormModal = ({
           freeSolo
           options={categorie}
           value={form.categoria}
-          onChange={(_, value) =>
-            setForm({ ...form, categoria: value ?? '' })
-          }
-          onInputChange={(_, value) =>
-            setForm({ ...form, categoria: value })
-          }
+          onChange={(_, value) => setForm({ ...form, categoria: value ?? '' })}
+          onInputChange={(_, value) => setForm({ ...form, categoria: value })}
           renderInput={(params) => (
-            <TextField
-              {...params}
-              label="Categoria"
-              size="small"
-              fullWidth
-            />
+            <TextField {...params} label="Categoria" size="small" fullWidth />
           )}
         />
 
@@ -193,8 +188,10 @@ const ArticoloFormModal = ({
       </DialogContent>
 
       <DialogActions>
-        <Button onClick={onClose}>Annulla</Button>
-        <Button variant="contained" onClick={handleSubmit}>
+        <Button onClick={onClose} disabled={actionLoading}>
+          Annulla
+        </Button>
+        <Button variant="contained" onClick={handleSubmit} disabled={actionLoading}>
           Salva
         </Button>
       </DialogActions>

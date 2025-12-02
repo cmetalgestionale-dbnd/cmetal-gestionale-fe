@@ -64,6 +64,8 @@ const UserManagement = ({ readOnly = false }: { readOnly?: boolean }) => {
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<Utente | null>(null);
 
+  const [actionLoading, setActionLoading] = useState(false); // 🔥 nuovo
+
   const [formData, setFormData] = useState({
     username: '',
     password: '',
@@ -81,11 +83,9 @@ const UserManagement = ({ readOnly = false }: { readOnly?: boolean }) => {
     const res = await fetch(`${backendUrl}/api/utenti`, { credentials: 'include' });
     const data: Utente[] = await res.json();
 
-    // Filtra utenti attivi tranne superadmin
     const active = data.filter(u => !u.isDeleted && u.username !== 'superadmin');
     setUtenti(active);
 
-    // Salva utenti cancellati per la modale
     const deleted = data.filter(u => u.isDeleted);
     setDeletedUtenti(deleted);
   };
@@ -94,7 +94,7 @@ const UserManagement = ({ readOnly = false }: { readOnly?: boolean }) => {
     fetchUtenti();
   }, []);
 
-    const { subscribe } = useWS();
+  const { subscribe } = useWS();
 
   useEffect(() => {
     const unsubscribe = subscribe((msg: IMessage) => {
@@ -111,7 +111,6 @@ const UserManagement = ({ readOnly = false }: { readOnly?: boolean }) => {
 
     return () => unsubscribe();
   }, [subscribe]);
-
 
   const handleOpenForm = (utente?: Utente) => {
     if (utente) {
@@ -156,6 +155,7 @@ const UserManagement = ({ readOnly = false }: { readOnly?: boolean }) => {
   };
 
   const handleSubmit = async () => {
+    setActionLoading(true);
     const method = editingUser ? 'PUT' : 'POST';
     const url = editingUser
       ? `${backendUrl}/api/utenti/${editingUser.id}`
@@ -168,6 +168,8 @@ const UserManagement = ({ readOnly = false }: { readOnly?: boolean }) => {
       body: JSON.stringify({ ...formData, livello: parseInt(`${formData.livello}`, 10) }),
     });
 
+    setActionLoading(false);
+
     handleCloseForm();
     fetchUtenti();
   };
@@ -179,10 +181,16 @@ const UserManagement = ({ readOnly = false }: { readOnly?: boolean }) => {
 
   const handleConfirmDelete = async () => {
     if (!userToDelete) return;
+
+    setActionLoading(true);
+
     await fetch(`${backendUrl}/api/utenti/${userToDelete.id}`, {
       method: 'DELETE',
       credentials: 'include',
     });
+
+    setActionLoading(false);
+
     setConfirmDeleteOpen(false);
     setUserToDelete(null);
     fetchUtenti();
@@ -193,32 +201,33 @@ const UserManagement = ({ readOnly = false }: { readOnly?: boolean }) => {
     setUserToDelete(null);
   };
 
-const handleRestore = async (utente: Utente) => {
-  if (!utente.id) return;
+  const handleRestore = async (utente: Utente) => {
+    setActionLoading(true);
 
-  const payload = {
-    username: utente.username,
-    password: '',       // vuoto = la password rimane invariata
-    livello: utente.livello,
-    nome: utente.nome || '',
-    cognome: utente.cognome || '',
-    email: utente.email || '',
-    telefono: utente.telefono || '',
-    attivo: true,       // forza attivo
-    isDeleted: false,   // ripristina
+    const payload = {
+      username: utente.username,
+      password: '',
+      livello: utente.livello,
+      nome: utente.nome || '',
+      cognome: utente.cognome || '',
+      email: utente.email || '',
+      telefono: utente.telefono || '',
+      attivo: true,
+      isDeleted: false,
+    };
+
+    await fetch(`${backendUrl}/api/utenti/${utente.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload),
+    });
+
+    setActionLoading(false);
+
+    fetchUtenti();
+    setDeletedOpen(false);
   };
-
-  await fetch(`${backendUrl}/api/utenti/${utente.id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify(payload),
-  });
-
-  // Ricarica gli utenti e chiudi la modale dei deleted
-  fetchUtenti();
-  setDeletedOpen(false);
-};
 
   return (
     <Paper elevation={3} sx={{ p: 3, borderRadius: 3 }}>
@@ -233,14 +242,17 @@ const handleRestore = async (utente: Utente) => {
             size="small"
             onClick={() => handleOpenForm()}
             sx={{ mb: 2 }}
+            disabled={actionLoading}
           >
             Aggiungi Utente
           </Button>
+
           <Button
             variant="outlined"
             size="small"
             sx={{ ml: 2, mb: 2 }}
             onClick={() => setDeletedOpen(true)}
+            disabled={actionLoading}
           >
             Utenze cancellate
           </Button>
@@ -251,16 +263,17 @@ const handleRestore = async (utente: Utente) => {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell sx={{ fontWeight: 600 }}>Username</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Nome</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Cognome</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Email</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Telefono</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Ruolo</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Attivo</TableCell>
-              {!readOnly && <TableCell sx={{ fontWeight: 600 }}>Azioni</TableCell>}
+              <TableCell>Username</TableCell>
+              <TableCell>Nome</TableCell>
+              <TableCell>Cognome</TableCell>
+              <TableCell>Email</TableCell>
+              <TableCell>Telefono</TableCell>
+              <TableCell>Ruolo</TableCell>
+              <TableCell>Attivo</TableCell>
+              {!readOnly && <TableCell>Azioni</TableCell>}
             </TableRow>
           </TableHead>
+
           <TableBody>
             {utenti.map((utente) => (
               <TableRow key={utente.id}>
@@ -273,12 +286,22 @@ const handleRestore = async (utente: Utente) => {
                 <TableCell>
                   <Switch checked={utente.attivo} disabled />
                 </TableCell>
+
                 {!readOnly && (
                   <TableCell>
-                    <IconButton size="small" onClick={() => handleOpenForm(utente)}>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleOpenForm(utente)}
+                      disabled={actionLoading}
+                    >
                       <Edit fontSize="small" />
                     </IconButton>
-                    <IconButton size="small" onClick={() => handleDeleteClick(utente)}>
+
+                    <IconButton
+                      size="small"
+                      onClick={() => handleDeleteClick(utente)}
+                      disabled={actionLoading}
+                    >
                       <Delete fontSize="small" />
                     </IconButton>
                   </TableCell>
@@ -286,12 +309,14 @@ const handleRestore = async (utente: Utente) => {
               </TableRow>
             ))}
           </TableBody>
+
         </Table>
       </TableContainer>
 
-      {/* Form utente */}
+      {/* FORM UTENTE */}
       <Dialog open={open} onClose={handleCloseForm} fullWidth maxWidth="sm">
         <DialogTitle>{editingUser ? 'Modifica Utente' : 'Nuovo Utente'}</DialogTitle>
+
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
           <TextField
             label="Username"
@@ -300,6 +325,7 @@ const handleRestore = async (utente: Utente) => {
             onChange={handleChange}
             size="small"
             fullWidth
+            disabled={actionLoading}
           />
           <TextField
             label="Password"
@@ -310,6 +336,7 @@ const handleRestore = async (utente: Utente) => {
             size="small"
             helperText={editingUser ? 'Lascia vuoto per non cambiare la password' : ''}
             fullWidth
+            disabled={actionLoading}
           />
           <TextField
             label="Nome"
@@ -318,6 +345,7 @@ const handleRestore = async (utente: Utente) => {
             onChange={handleChange}
             size="small"
             fullWidth
+            disabled={actionLoading}
           />
           <TextField
             label="Cognome"
@@ -326,6 +354,7 @@ const handleRestore = async (utente: Utente) => {
             onChange={handleChange}
             size="small"
             fullWidth
+            disabled={actionLoading}
           />
           <TextField
             label="Email"
@@ -334,6 +363,7 @@ const handleRestore = async (utente: Utente) => {
             onChange={handleChange}
             size="small"
             fullWidth
+            disabled={actionLoading}
           />
           <TextField
             label="Telefono"
@@ -342,8 +372,11 @@ const handleRestore = async (utente: Utente) => {
             onChange={handleChange}
             size="small"
             fullWidth
+            disabled={actionLoading}
           />
+
           <Typography variant="subtitle2">Ruolo</Typography>
+
           <RadioGroup
             row
             name="livello"
@@ -352,57 +385,61 @@ const handleRestore = async (utente: Utente) => {
               setFormData({ ...formData, livello: parseInt(e.target.value, 10) })
             }
           >
-            <FormControlLabel value={0} control={<Radio size="small" />} label="Amministratore" />
-            <FormControlLabel value={1} control={<Radio size="small" />} label="Supervisore" />
-            <FormControlLabel value={2} control={<Radio size="small" />} label="Dipendente" />
+            <FormControlLabel value={0} control={<Radio size="small" />} label="Amministratore" disabled={actionLoading} />
+            <FormControlLabel value={1} control={<Radio size="small" />} label="Supervisore" disabled={actionLoading} />
+            <FormControlLabel value={2} control={<Radio size="small" />} label="Dipendente" disabled={actionLoading} />
           </RadioGroup>
+
           <FormControlLabel
             control={
               <Switch
                 checked={formData.attivo}
                 onChange={handleChange}
                 name="attivo"
+                disabled={actionLoading}
               />
             }
             label="Attivo"
           />
         </DialogContent>
+
         <DialogActions>
-          <Button onClick={handleCloseForm} size="small">
-            Annulla
-          </Button>
-          <Button onClick={handleSubmit} size="small" variant="contained">
-            Salva
-          </Button>
+          <Button onClick={handleCloseForm} size="small" disabled={actionLoading}>Annulla</Button>
+          <Button onClick={handleSubmit} size="small" variant="contained" disabled={actionLoading}>Salva</Button>
         </DialogActions>
       </Dialog>
 
       {/* Conferma eliminazione */}
       <Dialog open={confirmDeleteOpen} onClose={handleCancelDelete}>
         <DialogTitle>Conferma Eliminazione</DialogTitle>
+
         <DialogContent>
           <Typography>
             Sei sicuro di voler eliminare <strong>{userToDelete?.username}</strong>?
           </Typography>
         </DialogContent>
+
         <DialogActions>
-          <Button onClick={handleCancelDelete} size="small">
+          <Button onClick={handleCancelDelete} size="small" disabled={actionLoading}>
             Annulla
           </Button>
+
           <Button
             onClick={handleConfirmDelete}
             size="small"
             color="error"
             variant="contained"
+            disabled={actionLoading}
           >
             Elimina
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* Modale utenti cancellati */}
+      {/* UTENTI CANCELLATI */}
       <Dialog open={deletedOpen} onClose={() => setDeletedOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>Utenze Cancellate</DialogTitle>
+
         <DialogContent>
           <Table size="small">
             <TableHead>
@@ -413,24 +450,33 @@ const handleRestore = async (utente: Utente) => {
                 <TableCell>Azioni</TableCell>
               </TableRow>
             </TableHead>
+
             <TableBody>
               {deletedUtenti.map(u => (
                 <TableRow key={u.id}>
                   <TableCell>{u.username}</TableCell>
                   <TableCell>{u.nome}</TableCell>
                   <TableCell>{u.cognome}</TableCell>
+
                   <TableCell>
-                    <Button size="small" onClick={() => handleRestore(u)}>Ripristina</Button>
+                    <Button size="small" onClick={() => handleRestore(u)} disabled={actionLoading}>
+                      Ripristina
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
+
           </Table>
         </DialogContent>
+
         <DialogActions>
-          <Button onClick={() => setDeletedOpen(false)}>Chiudi</Button>
+          <Button onClick={() => setDeletedOpen(false)} disabled={actionLoading}>
+            Chiudi
+          </Button>
         </DialogActions>
       </Dialog>
+
     </Paper>
   );
 };
