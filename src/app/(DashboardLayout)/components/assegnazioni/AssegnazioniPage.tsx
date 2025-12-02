@@ -114,123 +114,116 @@ const AssegnazioniPage = () => {
   const [loadingAssignments, setLoadingAssignments] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
-const loadCommesse = async () => {
-  if (commesse.length > 0) return; // se già caricate, non rifare fetch
-  setActionLoading(true);
-  try {
-    const res = await fetch(`${backendUrl}/api/commesse/existing`, { credentials: 'include' });
-    if (!res.ok) throw new Error('Errore fetch commesse');
-    const data: Commessa[] = await res.json();
-    setCommesse(data);
-  } catch (e) {
-    setSnack({ open: true, message: 'Errore caricando commesse', severity: 'error' });
-  } finally {
-    setActionLoading(false);
-  }
-};
-
-const loadClienti = async () => {
-  if (clienti.length > 0) return; // se già caricati, non rifare fetch
-  setActionLoading(true);
-  try {
-    const res = await fetch(`${backendUrl}/api/clienti/existing`, { credentials: 'include' });
-    if (!res.ok) throw new Error('Errore fetch clienti');
-    const data: Cliente[] = await res.json();
-    setClienti(data);
-  } catch (e) {
-    setSnack({ open: true, message: 'Errore caricando clienti', severity: 'error' });
-  } finally {
-    setActionLoading(false);
-  }
-};
-
-const filteredCommesse = commesse.filter(c =>
-  c.codice.toLowerCase().includes(searchCommessa.toLowerCase()) ||
-  (c.descrizione?.toLowerCase().includes(searchCommessa.toLowerCase()))
-);
-
-const filteredClienti = clienti.filter(c =>
-  c.nome.toLowerCase().includes(searchCliente.toLowerCase())
-);
-
-
-
-
-
-useEffect(() => {
-  const loadInitialData = async () => {
-    // Recupera utente corrente
-    const userRes = await fetch(`${backendUrl}/auth/me`, { credentials: 'include' });
-    const userData = await userRes.json();
-    setUtenteCorrente(userData);
-    setRuolo(userData.role);
-
-    // Recupera solo dipendenti
-    const dipRes = await fetch(`${backendUrl}/api/utenti/dipendenti`, { credentials: 'include' });
-    const dipList: Utente[] = await dipRes.json();
-    setDipendenti(dipList);
-
-    // Setta selectedDipendente in base al ruolo
-    if (userData.role === 'ADMIN' || userData.role === 'SUPERVISORE') {
-      setSelectedDipendente(dipList.length > 0 ? dipList[0].id : null);
-    } else {
-      setSelectedDipendente(userData.id);
+  const loadCommesse = async () => {
+    if (commesse.length > 0) return; // se già caricate, non rifare fetch
+    setActionLoading(true);
+    try {
+      const res = await fetch(`${backendUrl}/api/commesse/existing`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Errore fetch commesse');
+      const data: Commessa[] = await res.json();
+      setCommesse(data);
+    } catch (e) {
+      setSnack({ open: true, message: 'Errore caricando commesse', severity: 'error' });
+    } finally {
+      setActionLoading(false);
     }
   };
-  loadInitialData();
-}, [backendUrl]);
 
-
-const fetchAssignments = useCallback(async () => {
-  if (!selectedDipendente) return;
-
-  setLoadingAssignments(true);
-
-  const dateParam = selectedDate.toISOString().split('T')[0];
-  const url = `${backendUrl}/api/assegnazioni?utenteId=${selectedDipendente}&date=${dateParam}`;
-
-  try {
-    const res = await fetch(url, { credentials: 'include' });
-    if (!res.ok) {
-      setSnack({ open: true, message: 'Errore nel recuperare le assegnazioni', severity: 'error' });
-      setAssegnazioni([]);
-      return;
-    }
-    const data = await res.json();
-    data.sort((a: Assegnazione, b: Assegnazione) => new Date(a.assegnazioneAt).getTime() - new Date(b.assegnazioneAt).getTime());
-    setAssegnazioni(data);
-  } catch (e) {
-    setSnack({ open: true, message: 'Errore di rete', severity: 'error' });
-    setAssegnazioni([]);
-  } finally {
-    setLoadingAssignments(false);
-  }
-}, [selectedDipendente, selectedDate, backendUrl]);
-
-
-
-useEffect(() => {
-  fetchAssignments();
-}, [fetchAssignments]);
-
-// subscribe al broadcast globale (usa subscribe fornito dal WSProvider)
-const { subscribe } = useWS();
-
-useEffect(() => {
-  const unsubscribe = subscribe((msg: IMessage) => {
+  const loadClienti = async () => {
+    if (clienti.length > 0) return; // se già caricati, non rifare fetch
+    setActionLoading(true);
     try {
-      const payload = msg.body ? JSON.parse(msg.body) : {};
-      const tipo = payload.tipoEvento ?? payload.tipo ?? payload.tipo_evento;
-      if (tipo === 'REFRESH' || tipo === 'MSG_REFRESH') {
-        // rifetcha i dati (fetchAssignments è già definita)
-        fetchAssignments();
-      }
+      const res = await fetch(`${backendUrl}/api/clienti/existing`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Errore fetch clienti');
+      const data: Cliente[] = await res.json();
+      setClienti(data);
     } catch (e) {
-      console.warn('WS message parse error', e);
+      setSnack({ open: true, message: 'Errore caricando clienti', severity: 'error' });
+    } finally {
+      setActionLoading(false);
     }
-  });
-  return () => unsubscribe();
-}, [subscribe, fetchAssignments]);
+  };
+
+  const filteredCommesse = commesse.filter(c =>
+    c.codice.toLowerCase().includes(searchCommessa.toLowerCase()) ||
+    (c.descrizione?.toLowerCase().includes(searchCommessa.toLowerCase()))
+  );
+
+  const filteredClienti = clienti.filter(c =>
+    c.nome.toLowerCase().includes(searchCliente.toLowerCase())
+  );
+
+  useEffect(() => {
+    const loadInitialData = async () => {
+      // Recupera utente corrente
+      const userRes = await fetch(`${backendUrl}/auth/me`, { credentials: 'include' });
+      const userData = await userRes.json();
+      setUtenteCorrente(userData);
+      setRuolo(userData.role);
+
+      // Recupera solo dipendenti
+      const dipRes = await fetch(`${backendUrl}/api/utenti/dipendenti`, { credentials: 'include' });
+      const dipList: Utente[] = await dipRes.json();
+      setDipendenti(dipList);
+
+      // Setta selectedDipendente in base al ruolo
+      if (userData.role === 'ADMIN' || userData.role === 'SUPERVISORE') {
+        setSelectedDipendente(dipList.length > 0 ? dipList[0].id : null);
+      } else {
+        setSelectedDipendente(userData.id);
+      }
+    };
+    loadInitialData();
+  }, [backendUrl]);
+
+  const fetchAssignments = useCallback(async () => {
+    if (!selectedDipendente) return;
+
+    setLoadingAssignments(true);
+
+    const dateParam = selectedDate.toISOString().split('T')[0];
+    const url = `${backendUrl}/api/assegnazioni?utenteId=${selectedDipendente}&date=${dateParam}`;
+
+    try {
+      const res = await fetch(url, { credentials: 'include' });
+      if (!res.ok) {
+        setSnack({ open: true, message: 'Errore nel recuperare le assegnazioni', severity: 'error' });
+        setAssegnazioni([]);
+        return;
+      }
+      const data = await res.json();
+      data.sort((a: Assegnazione, b: Assegnazione) => new Date(a.assegnazioneAt).getTime() - new Date(b.assegnazioneAt).getTime());
+      setAssegnazioni(data);
+    } catch (e) {
+      setSnack({ open: true, message: 'Errore di rete', severity: 'error' });
+      setAssegnazioni([]);
+    } finally {
+      setLoadingAssignments(false);
+    }
+  }, [selectedDipendente, selectedDate, backendUrl]);
+
+  useEffect(() => {
+    fetchAssignments();
+  }, [fetchAssignments]);
+
+  // subscribe al broadcast globale (usa subscribe fornito dal WSProvider)
+  const { subscribe } = useWS();
+
+  useEffect(() => {
+    const unsubscribe = subscribe((msg: IMessage) => {
+      try {
+        const payload = msg.body ? JSON.parse(msg.body) : {};
+        const tipo = payload.tipoEvento ?? payload.tipo ?? payload.tipo_evento;
+        if (tipo === 'REFRESH' || tipo === 'MSG_REFRESH') {
+          // rifetcha i dati (fetchAssignments è già definita)
+          fetchAssignments();
+        }
+      } catch (e) {
+        console.warn('WS message parse error', e);
+      }
+    });
+    return () => unsubscribe();
+  }, [subscribe, fetchAssignments]);
 
   // navigazione date
   const changeDate = (days: number) => {
@@ -293,73 +286,72 @@ useEffect(() => {
     }
   };
 
-const handleUploadFoto = async (id: number, file: File) => {
-  if (!file) return;
+  const handleUploadFoto = async (id: number, file: File) => {
+    if (!file) return;
 
-  const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-  if (!allowed.includes(file.type)) {
-    setSnack({ open: true, message: "Il file deve essere un'immagine JPEG/PNG/WebP", severity: 'error' });
-    return;
-  }
-
-  // Se il file supera 0.5MB → comprimi
-  const MAX_SIZE_MB = 0.5;
-
-  let fileToUpload = file;
-  if (file.size > MAX_SIZE_MB * 1024 * 1024) {
-    try {
-      const options = {
-        maxSizeMB: MAX_SIZE_MB,
-        maxWidthOrHeight: 1920, // riduce dimensione se serve
-        useWebWorker: true,
-        initialQuality: 0.7, // qualità iniziale
-      };
-      const compressed = await imageCompression(file, options);
-
-      if (compressed.size > MAX_SIZE_MB * 1024 * 1024) {
-        setSnack({ open: true, message: "Impossibile comprimere sotto 0.5MB, riduci la risoluzione", severity: 'error' });
-        return;
-      }
-
-      fileToUpload = new File([compressed], file.name, { type: file.type });
-      setSnack({ open: true, message: 'Foto compressa con successo', severity: 'success' });
-    } catch (e) {
-      console.error(e);
-      setSnack({ open: true, message: 'Errore durante la compressione', severity: 'error' });
+    const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!allowed.includes(file.type)) {
+      setSnack({ open: true, message: "Il file deve essere un'immagine JPEG/PNG/WebP", severity: 'error' });
       return;
     }
-  }
 
-  const fd = new FormData();
-  fd.append('file', fileToUpload);
+    // Se il file supera 0.5MB → comprimi
+    const MAX_SIZE_MB = 0.5;
 
-  setActionLoading(true);
-  try {
-    const res = await fetch(`${backendUrl}/api/assegnazioni/${id}/upload-foto`, {
-      method: 'POST',
-      body: fd,
-      credentials: 'include',
-    });
+    let fileToUpload = file;
+    if (file.size > MAX_SIZE_MB * 1024 * 1024) {
+      try {
+        const options = {
+          maxSizeMB: MAX_SIZE_MB,
+          maxWidthOrHeight: 1920, // riduce dimensione se serve
+          useWebWorker: true,
+          initialQuality: 0.7, // qualità iniziale
+        };
+        const compressed = await imageCompression(file, options);
 
-    if (res.ok) {
-      setSnack({ open: true, message: 'Foto caricata!', severity: 'success' });
-      // rifetcha assegnazioni
-      const dateParam = selectedDate.toISOString().split('T')[0];
-      const url = `${backendUrl}/api/assegnazioni?utenteId=${selectedDipendente}&date=${dateParam}`;
-      const refetch = await fetch(url, { credentials: 'include' });
-      if (refetch.ok) setAssegnazioni(await refetch.json());
-    } else {
-      let text = 'Errore caricamento foto';
-      try { text = await res.text() || res.statusText || text; } catch {}
-      setSnack({ open: true, message: text, severity: 'error' });
+        if (compressed.size > MAX_SIZE_MB * 1024 * 1024) {
+          setSnack({ open: true, message: "Impossibile comprimere sotto 0.5MB, riduci la risoluzione", severity: 'error' });
+          return;
+        }
+
+        fileToUpload = new File([compressed], file.name, { type: file.type });
+        setSnack({ open: true, message: 'Foto compressa con successo', severity: 'success' });
+      } catch (e) {
+        console.error(e);
+        setSnack({ open: true, message: 'Errore durante la compressione', severity: 'error' });
+        return;
+      }
     }
-  } catch (e) {
-    setSnack({ open: true, message: "Errore di rete durante l'upload", severity: 'error' });
-  } finally {
-    setActionLoading(false);
-  }
-};
 
+    const fd = new FormData();
+    fd.append('file', fileToUpload);
+
+    setActionLoading(true);
+    try {
+      const res = await fetch(`${backendUrl}/api/assegnazioni/${id}/upload-foto`, {
+        method: 'POST',
+        body: fd,
+        credentials: 'include',
+      });
+
+      if (res.ok) {
+        setSnack({ open: true, message: 'Foto caricata!', severity: 'success' });
+        // rifetcha assegnazioni
+        const dateParam = selectedDate.toISOString().split('T')[0];
+        const url = `${backendUrl}/api/assegnazioni?utenteId=${selectedDipendente}&date=${dateParam}`;
+        const refetch = await fetch(url, { credentials: 'include' });
+        if (refetch.ok) setAssegnazioni(await refetch.json());
+      } else {
+        let text = 'Errore caricamento foto';
+        try { text = await res.text() || res.statusText || text; } catch {}
+        setSnack({ open: true, message: text, severity: 'error' });
+      }
+    } catch (e) {
+      setSnack({ open: true, message: "Errore di rete durante l'upload", severity: 'error' });
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   // gestione form
   const handleOpenForm = (a?: Assegnazione) => {
@@ -452,211 +444,210 @@ const handleUploadFoto = async (id: number, file: File) => {
 
   return (
     <Paper
-  sx={{
-    p: { xs: 2, md: 3 },        // padding adattivo
-    borderRadius: 3,
-    minHeight: '86vh',        // occupa tutta l'altezza della finestra
-    boxSizing: 'border-box',
-    display: 'flex',
-    flexDirection: 'column',
+      sx={{
+        p: { xs: 2, md: 3 },        // padding adattivo
+        borderRadius: 3,
+        minHeight: '86vh',        // occupa tutta l'altezza della finestra
+        boxSizing: 'border-box',
+        display: 'flex',
+        flexDirection: 'column',
 
-    // larghezza responsive: pieno su mobile, limitato e centrato su desktop
-    width: '100%',
-    maxWidth: { xs: '100%', md: '95vw' }, // md e oltre: max 1200px (modificabile)
-    minWidth: { md: '95vw', lg: 1200 },
-    //mx: 'auto',
+        // larghezza responsive: pieno su mobile, limitato e centrato su desktop
+        width: '100%',
+        maxWidth: { xs: '100%', md: '95vw' }, // md e oltre: max 1200px (modificabile)
+        minWidth: { md: '95vw', lg: 1200 },
+        //mx: 'auto',
 
-    // sfondo/ombra opzionali per maggiore contrasto su schermi grandi
-    // backgroundColor: 'background.paper',
-    // boxShadow: { xs: 'none', md: 1 },
-  }}
->
-  {/* HEADER */}
-  <Box
-    display="flex"
-    flexWrap="wrap" // permette ai componenti di andare a capo se manca spazio
-    justifyContent="space-between"
-    alignItems="center"
-    mb={3}
-    gap={2}
-  >
-    <TextField
-      select
-      label="Dipendente"
-      size="small"
-      value={selectedDipendente ?? ''}
-      onChange={e => setSelectedDipendente(Number(e.target.value))}
-      disabled={ruolo === 'DIPENDENTE' || actionLoading}
-      sx={{ width: 250, minWidth: 120 }}
+        // sfondo/ombra opzionali per maggiore contrasto su schermi grandi
+        // backgroundColor: 'background.paper',
+        // boxShadow: { xs: 'none', md: 1 },
+      }}
     >
-      {dipendenti.map(d => (
-        <MenuItem key={d.id} value={d.id}>
-          {d.nome} {d.cognome}
-        </MenuItem>
-      ))}
-    </TextField>
+      {/* HEADER */}
+      <Box
+        display="flex"
+        flexWrap="wrap" // permette ai componenti di andare a capo se manca spazio
+        justifyContent="space-between"
+        alignItems="center"
+        mb={3}
+        gap={2}
+      >
+        <TextField
+          select
+          label="Dipendente"
+          size="small"
+          value={selectedDipendente ?? ''}
+          onChange={e => setSelectedDipendente(Number(e.target.value))}
+          disabled={ruolo === 'DIPENDENTE' || actionLoading}
+          sx={{ width: 250, minWidth: 120 }}
+        >
+          {dipendenti.map(d => (
+            <MenuItem key={d.id} value={d.id}>
+              {d.nome} {d.cognome}
+            </MenuItem>
+          ))}
+        </TextField>
 
-    <Box display="flex" alignItems="center" gap={2}>
-<IconButton onClick={() => changeDate(-1)} disabled={loadingAssignments || actionLoading}>
-  <ArrowBack />
-</IconButton>
-      <Typography fontWeight={600}>
-        {selectedDate.toLocaleDateString('it-IT', {
-          weekday: 'short',
-          day: '2-digit',
-          month: '2-digit',
-        })}
-      </Typography>
-<IconButton onClick={() => changeDate(1)} disabled={loadingAssignments || actionLoading}>
-  <ArrowForward />
-</IconButton>
-    </Box>
+        <Box display="flex" alignItems="center" gap={2}>
+          <IconButton onClick={() => changeDate(-1)} disabled={loadingAssignments || actionLoading}>
+            <ArrowBack />
+          </IconButton>
+          <Typography fontWeight={600}>
+            {selectedDate.toLocaleDateString('it-IT', {
+              weekday: 'short',
+              day: '2-digit',
+              month: '2-digit',
+            })}
+          </Typography>
+          <IconButton onClick={() => changeDate(1)} disabled={loadingAssignments || actionLoading}>
+            <ArrowForward />
+          </IconButton>
+        </Box>
 
-    {(ruolo === 'ADMIN' || ruolo === 'SUPERVISORE') && (
-      <Button startIcon={<Add />} variant="contained" size="small" onClick={() => handleOpenForm()} disabled={actionLoading}>
-        Nuova assegnazione
-      </Button>
-    )}
-  </Box>
+        {ruolo === 'ADMIN' && (
+          <Button startIcon={<Add />} variant="contained" size="small" onClick={() => handleOpenForm()} disabled={actionLoading}>
+            Nuova assegnazione
+          </Button>
+        )}
+      </Box>
 
-  {/* LISTA */}
-  <Box
-    sx={{
-      flexGrow: 1, // 2. Il contenitore delle card riempie tutto lo spazio rimanente
-      overflowY: 'auto', // scrollbar se ci sono troppe card
-    }}
-  >
-      {assegnazioni.length === 0 ? (
-    <Typography textAlign="center" mt={5} color="text.secondary">
-      Nessuna assegnazione trovata
-    </Typography>
-  ) : (
-    <Grid container spacing={2}>
-      {assegnazioni.map(a => (
-        <Grid size={{ xs: 12, sm: 6, md: 4 }} key={a.id}>
-          <Card
-            variant="outlined"
-            sx={{
-              height: 250, // 3. Altezza fissa
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              wordBreak: 'break-word', // permette al testo di andare a capo se necessario
-              overflow: 'hidden',
-            }}
-          >
-            <CardContent sx={{ flex: 1 }}>
-              <Typography variant="subtitle1" fontWeight={600} noWrap={false}>
-                {a.commessa.codice} — {a.cliente.nome}
-              </Typography>
-              <Typography variant="body2" color="text.secondary" mt={1} sx={{ overflowWrap: 'break-word' }}>
-                {a.note || 'Nessuna nota'}
-              </Typography>
-              <Typography mt={2} color={statusColor(a)} fontWeight={600}>
-                {getStatus(a)}
-              </Typography>
-              {a.startAt && (
-                <Typography variant="body2" color="text.secondary">
-                  Inizio: {new Date(a.startAt).toLocaleTimeString('it-IT')}
-                </Typography>
-              )}
-              {a.endAt && (
-                <Typography variant="body2" color="text.secondary">
-                  Fine: {new Date(a.endAt).toLocaleTimeString('it-IT')}
-                </Typography>
-              )}
-              {a.fotoAllegato && !a.endAt && (
-                <Typography variant="caption" color="text.secondary">
-                  Allegato caricato, puoi terminare
-                </Typography>
-              )}
-            </CardContent>
-            <CardActions>
-                {(ruolo === 'ADMIN' || ruolo === 'SUPERVISORE') && (
-                  <>
-                    <Tooltip title="Modifica">
-                      <IconButton onClick={() => handleOpenForm(a)} disabled={actionLoading}>
-                        <Edit />
-                      </IconButton>
-                    </Tooltip>
+      {/* LISTA */}
+      <Box
+        sx={{
+          flexGrow: 1, // 2. Il contenitore delle card riempie tutto lo spazio rimanente
+          overflowY: 'auto', // scrollbar se ci sono troppe card
+        }}
+      >
+        {assegnazioni.length === 0 ? (
+          <Typography textAlign="center" mt={5} color="text.secondary">
+            Nessuna assegnazione trovata
+          </Typography>
+        ) : (
+          <Grid container spacing={2}>
+            {assegnazioni.map(a => (
+              <Grid size={{ xs: 12, sm: 6, md: 4 }} key={a.id}>
+                <Card
+                  variant="outlined"
+                  sx={{
+                    height: 250, // 3. Altezza fissa
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    wordBreak: 'break-word', // permette al testo di andare a capo se necessario
+                    overflow: 'hidden',
+                  }}
+                >
+                  <CardContent sx={{ flex: 1 }}>
+                    <Typography variant="subtitle1" fontWeight={600} noWrap={false}>
+                      {a.commessa.codice} — {a.cliente.nome}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" mt={1} sx={{ overflowWrap: 'break-word' }}>
+                      {a.note || 'Nessuna nota'}
+                    </Typography>
+                    <Typography mt={2} color={statusColor(a)} fontWeight={600}>
+                      {getStatus(a)}
+                    </Typography>
+                    {a.startAt && (
+                      <Typography variant="body2" color="text.secondary">
+                        Inizio: {new Date(a.startAt).toLocaleTimeString('it-IT')}
+                      </Typography>
+                    )}
+                    {a.endAt && (
+                      <Typography variant="body2" color="text.secondary">
+                        Fine: {new Date(a.endAt).toLocaleTimeString('it-IT')}
+                      </Typography>
+                    )}
+                    {a.fotoAllegato && !a.endAt && (
+                      <Typography variant="caption" color="text.secondary">
+                        Allegato caricato, puoi terminare
+                      </Typography>
+                    )}
+                  </CardContent>
+                  <CardActions>
+                    {ruolo === 'ADMIN' && (
+                      <>
+                        <Tooltip title="Modifica">
+                          <IconButton onClick={() => handleOpenForm(a)} disabled={actionLoading}>
+                            <Edit />
+                          </IconButton>
+                        </Tooltip>
 
-                    <Tooltip title="Elimina">
-                      <IconButton onClick={() => setConfirmDelete(a)} disabled={actionLoading}>
-                        <Delete />
-                      </IconButton>
-                    </Tooltip>
-                  </>
-                )}
+                        <Tooltip title="Elimina">
+                          <IconButton onClick={() => setConfirmDelete(a)} disabled={actionLoading}>
+                            <Delete />
+                          </IconButton>
+                        </Tooltip>
+                      </>
+                    )}
 
-                {ruolo === 'DIPENDENTE' && !a.startAt && (
-                  <Button size="small" onClick={() => setConfirmAction({ tipo: 'start', assegnazione: a })} disabled={actionLoading}>
-                    Inizia
-                  </Button>
-                )}
-                {ruolo === 'DIPENDENTE' && a.startAt && !a.endAt && (
-                  <>
-                    <IconButton
-                      component="label"
-                      disabled={!!a.fotoAllegato || actionLoading}
-                      title={a.fotoAllegato ? 'Foto già caricata' : 'Carica allegato prima di terminare'}
-                    >
-                      <PhotoCamera />
-                      <input
-                        type="file"
-                        hidden
-                        accept="image/*"
-                        onChange={e => e.target.files && handleUploadFoto(a.id, e.target.files[0])}
-                      />
-                    </IconButton>
-                    <Button
-                      size="small"
-                      onClick={() => setConfirmAction({ tipo: 'end', assegnazione: a })}
-                      disabled={!a.fotoAllegato || actionLoading}
-                    >
-                      Termina
-                    </Button>
-                  </>
-                )}
+                    {(ruolo === 'DIPENDENTE' || ruolo === 'SUPERVISORE') && !a.startAt && (
+                      <Button size="small" onClick={() => setConfirmAction({ tipo: 'start', assegnazione: a })} disabled={actionLoading}>
+                        Inizia
+                      </Button>
+                    )}
+                    {(ruolo === 'DIPENDENTE' || ruolo === 'SUPERVISORE') && a.startAt && !a.endAt && (
+                      <>
+                        <IconButton
+                          component="label"
+                          disabled={!!a.fotoAllegato || actionLoading}
+                          title={a.fotoAllegato ? 'Foto già caricata' : 'Carica allegato prima di terminare'}
+                        >
+                          <PhotoCamera />
+                          <input
+                            type="file"
+                            hidden
+                            accept="image/*"
+                            onChange={e => e.target.files && handleUploadFoto(a.id, e.target.files[0])}
+                          />
+                        </IconButton>
+                        <Button
+                          size="small"
+                          onClick={() => setConfirmAction({ tipo: 'end', assegnazione: a })}
+                          disabled={!a.fotoAllegato || actionLoading}
+                        >
+                          Termina
+                        </Button>
+                      </>
+                    )}
 
-                {a.commessa.pdfAllegato ? (
-                  <Tooltip title="Apri PDF Commessa">
-                    <IconButton
-                      component="a"
-                      href={`${backendUrl}/api/commesse/${a.commessa.id}/allegato`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      disabled={actionLoading}
-                    >
-                      <PictureAsPdf />
-                    </IconButton>
-                  </Tooltip>
-                ) : (
-                  <Tooltip title="Nessun PDF">
-                    <PictureAsPdf sx={{ opacity: 0.3 }} />
-                  </Tooltip>
-                )}
+                    {a.commessa.pdfAllegato ? (
+                      <Tooltip title="Apri PDF Commessa">
+                        <IconButton
+                          component="a"
+                          href={`${backendUrl}/api/commesse/${a.commessa.id}/allegato`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          disabled={actionLoading}
+                        >
+                          <PictureAsPdf />
+                        </IconButton>
+                      </Tooltip>
+                    ) : (
+                      <Tooltip title="Nessun PDF">
+                        <PictureAsPdf sx={{ opacity: 0.3 }} />
+                      </Tooltip>
+                    )}
 
-                {(ruolo === 'ADMIN' || ruolo === 'SUPERVISORE' )&& a.fotoAllegato && a.endAt && (
-                  <Tooltip title="Visualizza foto allegata">
-                    <IconButton
-                      component="a"
-                      href={`${backendUrl}/api/assegnazioni/${a.id}/foto`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      disabled={actionLoading}
-                    >
-                      <PhotoCamera />
-                    </IconButton>
-                  </Tooltip>
-                )}
-              </CardActions>
-          </Card>
-        </Grid>
-      ))}
-    </Grid>
-  )}
-  </Box>
-
+                    {(ruolo === 'ADMIN' || ruolo === 'SUPERVISORE' )&& a.fotoAllegato && a.endAt && (
+                      <Tooltip title="Visualizza foto allegata">
+                        <IconButton
+                          component="a"
+                          href={`${backendUrl}/api/assegnazioni/${a.id}/foto`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          disabled={actionLoading}
+                        >
+                          <PhotoCamera />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                  </CardActions>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        )}
+      </Box>
 
       {/* DIALOG NUOVA/MODIFICA */}
       <Dialog open={openForm} onClose={() => setOpenForm(false)} fullWidth maxWidth="sm">
@@ -725,14 +716,14 @@ const handleUploadFoto = async (id: number, file: File) => {
       <Dialog open={openCommessaModal} onClose={() => setOpenCommessaModal(false)} fullWidth maxWidth="md">
         <DialogTitle>Seleziona Commessa</DialogTitle>
         <DialogContent>
-<TextField
-  placeholder="Cerca per codice o descrizione"
-  value={searchCommessa}
-  onChange={e => setSearchCommessa(e.target.value)}
-  fullWidth
-  size="small"
-  sx={{ mb: 2 }}
-/>
+          <TextField
+            placeholder="Cerca per codice o descrizione"
+            value={searchCommessa}
+            onChange={e => setSearchCommessa(e.target.value)}
+            fullWidth
+            size="small"
+            sx={{ mb: 2 }}
+          />
           <Box display="flex" flexDirection="column" gap={1}>
             {filteredCommesse.map(c => (
               <Paper
@@ -773,14 +764,14 @@ const handleUploadFoto = async (id: number, file: File) => {
       <Dialog open={openClienteModal} onClose={() => setOpenClienteModal(false)} fullWidth maxWidth="sm">
         <DialogTitle>Seleziona Cliente</DialogTitle>
         <DialogContent>
-<TextField
-  placeholder="Cerca cliente per nome"
-  value={searchCliente}
-  onChange={e => setSearchCliente(e.target.value)}
-  fullWidth
-  size="small"
-  sx={{ mb: 2 }}
-/>
+          <TextField
+            placeholder="Cerca cliente per nome"
+            value={searchCliente}
+            onChange={e => setSearchCliente(e.target.value)}
+            fullWidth
+            size="small"
+            sx={{ mb: 2 }}
+          />
           <Box display="flex" flexDirection="column" gap={1}>
             {filteredClienti.map(c => (
               <Paper
