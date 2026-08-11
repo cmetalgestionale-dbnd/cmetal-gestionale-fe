@@ -12,6 +12,7 @@ import {
   TableRow,
   TableCell,
   TableBody,
+  TableContainer,
   TextField,
   Box,
   Typography,
@@ -152,7 +153,7 @@ const MovimentiModal = ({
       <DialogTitle>{titolo}</DialogTitle>
 
       <DialogContent>
-        <Box display="flex" gap={2} mb={2} alignItems="center">
+        <Box sx={{ display: 'flex', gap: 2, mb: 2, alignItems: { xs: 'stretch', sm: 'center' }, flexDirection: { xs: 'column', sm: 'row' } }}>
           <TextField
             label="Da"
             type="date"
@@ -191,44 +192,46 @@ const MovimentiModal = ({
           )}
         </Box>
 
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              {!articolo && <TableCell>Articolo</TableCell>}
-              <TableCell>Data</TableCell>
-              <TableCell>Quantità</TableCell>
-              <TableCell>Descrizione</TableCell>
-            </TableRow>
-          </TableHead>
-
-          <TableBody>
-            {movFiltrati.map((m) => (
-              <TableRow key={m.id}>
-                {!articolo && <TableCell>{m.inventario?.nome || '-'}</TableCell>}
-
-                <TableCell>{new Date(m.movimentoAt).toLocaleString()}</TableCell>
-
-                <TableCell
-                  style={{ color: m.quantita > 0 ? 'green' : 'red', fontWeight: 600 }}
-                >
-                  {m.quantita}
-                </TableCell>
-
-                <TableCell>{m.descrizione || '-'}</TableCell>
-              </TableRow>
-            ))}
-
-            {movFiltrati.length === 0 && (
+        <TableContainer sx={{ display: 'block', overflowX: 'auto', overflowY: 'hidden', width: '100%', maxWidth: '100%', minWidth: 0, WebkitOverflowScrolling: 'touch' }}>
+          <Table size="small" sx={{ minWidth: 560 }}>
+            <TableHead>
               <TableRow>
-                <TableCell colSpan={3}>
-                  <Typography align="center" color="text.secondary">
-                    Nessun movimento trovato
-                  </Typography>
-                </TableCell>
+                {!articolo && <TableCell>Articolo</TableCell>}
+                <TableCell>Data</TableCell>
+                <TableCell>Quantita</TableCell>
+                <TableCell>Descrizione</TableCell>
               </TableRow>
-            )}
-          </TableBody>
-        </Table>
+            </TableHead>
+
+            <TableBody>
+              {movFiltrati.map((m) => (
+                <TableRow key={m.id}>
+                  {!articolo && <TableCell>{m.inventario?.nome || '-'}</TableCell>}
+
+                  <TableCell>{new Date(m.movimentoAt).toLocaleString()}</TableCell>
+
+                  <TableCell
+                    style={{ color: m.quantita > 0 ? 'green' : 'red', fontWeight: 600 }}
+                  >
+                    {m.quantita}
+                  </TableCell>
+
+                  <TableCell>{m.descrizione || '-'}</TableCell>
+                </TableRow>
+              ))}
+
+              {movFiltrati.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={articolo ? 3 : 4}>
+                    <Typography align="center" color="text.secondary">
+                      Nessun movimento trovato
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
       </DialogContent>
 
       <DialogActions>

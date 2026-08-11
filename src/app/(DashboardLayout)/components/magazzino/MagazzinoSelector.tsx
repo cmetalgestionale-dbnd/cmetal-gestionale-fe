@@ -81,15 +81,16 @@ const MagazzinoSelector = ({ onSelect }: { onSelect: (id: number | null) => void
   const currentMag = magazzini.find((m) => m.id === selected);
 
   return (
-    <Box display="flex" gap={2} alignItems="center">
+    <Box sx={{ display: 'flex', gap: 2, alignItems: { xs: 'stretch', sm: 'center' }, flexDirection: { xs: 'column', sm: 'row' }, width: '100%' }}>
       <TextField
         select
         label="Seleziona Magazzino"
         value={selected}
         onChange={(e) => handleSelect(e.target.value)}
         size="small"
-        sx={{ width: 250 }}
+        sx={{ width: { xs: '100%', sm: 250 } }}
         disabled={actionLoading}
+        fullWidth
       >
         {magazzini.map((m) => (
           <MenuItem key={m.id} value={m.id}>
@@ -103,6 +104,7 @@ const MagazzinoSelector = ({ onSelect }: { onSelect: (id: number | null) => void
         size="small"
         onClick={() => setOpen(true)}
         disabled={actionLoading}
+        fullWidth
       >
         Nuovo Magazzino
       </Button>
@@ -113,6 +115,7 @@ const MagazzinoSelector = ({ onSelect }: { onSelect: (id: number | null) => void
         color="error"
         disabled={!selected || actionLoading}
         onClick={() => setConfirmDeleteOpen(true)}
+        fullWidth
       >
         Elimina Magazzino
       </Button>

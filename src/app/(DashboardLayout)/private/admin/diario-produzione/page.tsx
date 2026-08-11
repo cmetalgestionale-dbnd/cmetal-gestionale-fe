@@ -1,11 +1,11 @@
-'use client'
+'use client';
 
 import { useEffect, useState } from 'react';
-import { Grid, Box, Typography } from '@mui/material';
+import { Box, Typography } from '@mui/material';
 import PageContainer from '@/app/(DashboardLayout)/components/container/PageContainer';
-import ClientManagement from '@/app/(DashboardLayout)/components/clienti/ClientManagement';
+import DiarioProduzioneComponent from '@/app/(DashboardLayout)/components/diario/DiarioProduzioneComponent';
 
-const Utenze = () => {
+const DiarioProduzionePage = () => {
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -17,23 +17,18 @@ const Utenze = () => {
           method: 'GET',
           credentials: 'include',
         });
-
         if (res.ok) {
           const data = await res.json();
-          setRole(data.role); // <-- backend manda role come stringa
-        } else if (res.status === 401) {
-          window.location.href = '/authentication/login';
+          setRole(data.role);
         } else {
-          console.error('Errore nel recupero del ruolo utente');
+          window.location.href = '/authentication/login';
         }
-      } catch (error) {
-        console.error('Errore fetch /auth/me', error);
+      } catch {
         window.location.href = '/authentication/login';
       } finally {
         setLoading(false);
       }
     }
-
     fetchUserRole();
   }, []);
 
@@ -45,8 +40,7 @@ const Utenze = () => {
     );
   }
 
-  // Se non sei admin → accesso negato
-  if (role !== 'ADMIN') {
+  if (!['ADMIN', 'SUPERVISORE', 'DIPENDENTE'].includes(role || '')) {
     return (
       <PageContainer title="Accesso Negato" description="">
         <Box p={2}>
@@ -59,14 +53,12 @@ const Utenze = () => {
   }
 
   return (
-    <PageContainer title="Clienti" description="Clienti">
-      <Grid container spacing={3}>
-        <Grid>
-          <ClientManagement />
-        </Grid>
-      </Grid>
+    <PageContainer title="Diario Produzione" description="Diario Produzione">
+      <Box sx={{ width: '100%', minWidth: 0 }}>
+        <DiarioProduzioneComponent />
+      </Box>
     </PageContainer>
   );
 };
 
-export default Utenze;
+export default DiarioProduzionePage;

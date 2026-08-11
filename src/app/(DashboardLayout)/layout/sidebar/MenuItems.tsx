@@ -1,11 +1,10 @@
 import {
-  IconLayoutDashboard,
   IconSettings,
-  IconGraph,
   IconUser,
-  IconBriefcase2,
   IconHammer,
-  IconForklift
+  IconForklift,
+  IconNotebook,
+  IconTruck
 } from "@tabler/icons-react";
 
 
@@ -20,9 +19,17 @@ const Menuitems = [
 
   {
     id: uniqueId(),
-    title: "Assegnazioni",
-    icon: IconLayoutDashboard,
-    href: "/private/admin/assegnazioni",
+    title: "Diario Produzione",
+    icon: IconNotebook,
+    href: "/private/admin/diario-produzione",
+    roles: ["ADMIN", "SUPERVISORE", "DIPENDENTE"],
+  },
+  {
+    id: uniqueId(),
+    title: "Tabella di Marcia",
+    icon: IconTruck,
+    href: "/private/admin/tabella-marcia",
+    roles: ["ADMIN", "SUPERVISORE", "DIPENDENTE"],
   },
   {
     navlabel: true,
@@ -33,18 +40,14 @@ const Menuitems = [
     title: "Gestione Commesse",
     icon: IconHammer,
     href: "/private/admin/commesse",
-  },
-  {
-    id: uniqueId(),
-    title: "Gestione Clienti",
-    icon: IconBriefcase2,
-    href: "/private/admin/clienti",
+    roles: ["ADMIN", "SUPERVISORE"],
   },
   {
     id: uniqueId(),
     title: "Gestione Inventario",
     icon: IconForklift,
     href: "/private/admin/magazzino",
+    roles: ["ADMIN", "SUPERVISORE"],
   },
   {
     navlabel: true,
@@ -55,6 +58,7 @@ const Menuitems = [
     title: "Gestione Utenze",
     icon: IconUser,
     href: "/private/admin/utenze",
+    roles: ["ADMIN"],
   },
   {
     navlabel: true,
@@ -62,19 +66,12 @@ const Menuitems = [
   },
   {
     id: uniqueId(),
-    title: "Genera Report",
-    icon: IconGraph,
-    href: "/private/admin/report",
-  },
-  {
-    id: uniqueId(),
     title: "Impostazioni",
     icon: IconSettings,
     href: "/private/admin/impostazioni",
+    roles: ["ADMIN"],
   },
 
 ];
 
 export default Menuitems;
-
-

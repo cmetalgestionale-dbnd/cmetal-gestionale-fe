@@ -1,9 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react';
-import { Grid, Box, Typography } from '@mui/material';
+import { Box, Typography } from '@mui/material';
 import PageContainer from '@/app/(DashboardLayout)/components/container/PageContainer';
-import ClientManagement from '@/app/(DashboardLayout)/components/clienti/ClientManagement';
 import CommessaManagement from '@/app/(DashboardLayout)/components/commesse/CommessaManagement';
 
 const Utenze = () => {
@@ -46,8 +45,7 @@ const Utenze = () => {
     );
   }
 
-  // Se non sei admin → accesso negato
-  if (role !== 'ADMIN') {
+  if (role !== 'ADMIN' && role !== 'SUPERVISORE') {
     return (
       <PageContainer title="Accesso Negato" description="">
         <Box p={2}>
@@ -61,11 +59,9 @@ const Utenze = () => {
 
   return (
     <PageContainer title="Commesse" description="Commesse">
-      <Grid container spacing={3}>
-        <Grid>
-          <CommessaManagement />
-        </Grid>
-      </Grid>
+      <Box sx={{ width: '100%', minWidth: 0 }}>
+        <CommessaManagement />
+      </Box>
     </PageContainer>
   );
 };

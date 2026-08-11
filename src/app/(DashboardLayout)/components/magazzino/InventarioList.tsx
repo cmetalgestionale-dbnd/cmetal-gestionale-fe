@@ -13,6 +13,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableContainer,
   TableHead,
   TableRow,
   Typography,
@@ -152,12 +153,12 @@ const InventarioList = ({ magazzinoId }: { magazzinoId: number }) => {
   };
 
   return (
-    <Paper elevation={3} sx={{ p: 3, borderRadius: 3 }}>
+    <Paper elevation={3} sx={{ p: { xs: 1.5, sm: 3 }, borderRadius: { xs: 2, sm: 3 }, width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
       <Typography variant="h5" mb={3} fontWeight={600}>
         Inventario
       </Typography>
 
-      <Box display="flex" gap={2} mb={2}>
+      <Box sx={{ display: 'flex', gap: 2, mb: 2, flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'stretch', sm: 'center' } }}>
         <Button
           variant="contained"
           startIcon={<Add />}
@@ -185,12 +186,13 @@ const InventarioList = ({ magazzinoId }: { magazzinoId: number }) => {
         </Button>
       </Box>
 
-      <Table size="small">
-        <TableHead>
-          <TableRow>
-            <TableCell onClick={() => handleSort('nome')} sx={{ cursor: 'pointer' }}>
-              Nome {sortField === 'nome' && (sortDirection === 'asc' ? '▲' : '▼')}
-            </TableCell>
+      <TableContainer sx={{ display: 'block', overflowX: 'auto', overflowY: 'hidden', width: '100%', maxWidth: '100%', minWidth: 0, WebkitOverflowScrolling: 'touch' }}>
+        <Table size="small" sx={{ minWidth: 980 }}>
+          <TableHead>
+            <TableRow>
+              <TableCell onClick={() => handleSort('nome')} sx={{ cursor: 'pointer' }}>
+                Nome {sortField === 'nome' && (sortDirection === 'asc' ? '▲' : '▼')}
+              </TableCell>
 
             <TableCell
               onClick={() => handleSort('descrizione')}
@@ -249,77 +251,78 @@ const InventarioList = ({ magazzinoId }: { magazzinoId: number }) => {
             </TableCell>
 
             <TableCell>Azioni</TableCell>
-          </TableRow>
-        </TableHead>
+            </TableRow>
+          </TableHead>
 
-        <TableBody>
-          {articoli.map((articolo) => {
-            const sottoScorta =
-              typeof articolo.livelloRiordino === 'number' &&
-              articolo.livelloRiordino > 0 &&
-              articolo.quantitaMagazzino < articolo.livelloRiordino;
+          <TableBody>
+            {articoli.map((articolo) => {
+              const sottoScorta =
+                typeof articolo.livelloRiordino === 'number' &&
+                articolo.livelloRiordino > 0 &&
+                articolo.quantitaMagazzino < articolo.livelloRiordino;
 
-            return (
-              <TableRow
-                key={articolo.id}
-                sx={
-                  sottoScorta
-                    ? { backgroundColor: 'rgba(255, 193, 7, 0.2)' }
-                    : undefined
-                }
-              >
-                <TableCell>{articolo.nome}</TableCell>
-                <TableCell>{articolo.descrizione}</TableCell>
-                <TableCell>{articolo.categoria}</TableCell>
-                <TableCell>{articolo.quantitaMagazzino}</TableCell>
-                <TableCell>{articolo.prezzoUnitario} €</TableCell>
-                <TableCell>{articolo.valoreInventario} €</TableCell>
-                <TableCell>{articolo.livelloRiordino}</TableCell>
-                <TableCell>{articolo.quantitaInRiordino}</TableCell>
-                <TableCell>
-                  <IconButton
-                    size="small"
-                    onClick={() => {
-                      setSelectedArticolo(articolo);
-                      setOpenMovimenti(true);
-                    }}
-                    disabled={actionLoading}
-                  >
-                    <History fontSize="small" />
-                  </IconButton>
-                  <IconButton
-                    size="small"
-                    onClick={() => {
-                      setSelectedArticolo(articolo);
-                      setOpenMovimentoForm(true);
-                    }}
-                    disabled={actionLoading}
-                  >
-                    ➕➖
-                  </IconButton>
-                  <IconButton
-                    size="small"
-                    onClick={() => {
-                      setSelectedArticolo(articolo);
-                      setOpenArticoloForm(true);
-                    }}
-                    disabled={actionLoading}
-                  >
-                    <Edit fontSize="small" />
-                  </IconButton>
-                  <IconButton
-                    size="small"
-                    onClick={() => handleDeleteClick(articolo)}
-                    disabled={actionLoading}
-                  >
-                    <Delete fontSize="small" />
-                  </IconButton>
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
+              return (
+                <TableRow
+                  key={articolo.id}
+                  sx={
+                    sottoScorta
+                      ? { backgroundColor: 'rgba(255, 193, 7, 0.2)' }
+                      : undefined
+                  }
+                >
+                  <TableCell>{articolo.nome}</TableCell>
+                  <TableCell>{articolo.descrizione}</TableCell>
+                  <TableCell>{articolo.categoria}</TableCell>
+                  <TableCell>{articolo.quantitaMagazzino}</TableCell>
+                  <TableCell>{articolo.prezzoUnitario} €</TableCell>
+                  <TableCell>{articolo.valoreInventario} €</TableCell>
+                  <TableCell>{articolo.livelloRiordino}</TableCell>
+                  <TableCell>{articolo.quantitaInRiordino}</TableCell>
+                  <TableCell>
+                    <IconButton
+                      size="small"
+                      onClick={() => {
+                        setSelectedArticolo(articolo);
+                        setOpenMovimenti(true);
+                      }}
+                      disabled={actionLoading}
+                    >
+                      <History fontSize="small" />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      onClick={() => {
+                        setSelectedArticolo(articolo);
+                        setOpenMovimentoForm(true);
+                      }}
+                      disabled={actionLoading}
+                    >
+                      +/-
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      onClick={() => {
+                        setSelectedArticolo(articolo);
+                        setOpenArticoloForm(true);
+                      }}
+                      disabled={actionLoading}
+                    >
+                      <Edit fontSize="small" />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleDeleteClick(articolo)}
+                      disabled={actionLoading}
+                    >
+                      <Delete fontSize="small" />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </TableContainer>
 
       {/* Modali */}
       <MovimentiModal

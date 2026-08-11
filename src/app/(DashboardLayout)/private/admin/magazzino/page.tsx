@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import PageContainer from '@/app/(DashboardLayout)/components/container/PageContainer';
-import { Box, Grid, Typography } from '@mui/material';
+import { Box, Typography } from '@mui/material';
 
 import MagazzinoSelector from '@/app/(DashboardLayout)/components/magazzino/MagazzinoSelector';
 import InventarioList from '@/app/(DashboardLayout)/components/magazzino/InventarioList';
@@ -61,21 +61,15 @@ const MagazzinoPage = () => {
 
   return (
     <PageContainer title="Inventario" description="Inventario">
-      <Grid container spacing={3}>
-        <Grid>
-          <MagazzinoSelector onSelect={setSelectedMagazzinoId} />
-        </Grid>
-
-{selectedMagazzinoId && (
-  <Grid>
-    <InventarioList
-      key={selectedMagazzinoId}
-      magazzinoId={selectedMagazzinoId}
-    />
-  </Grid>
-)}
-
-      </Grid>
+      <Box sx={{ width: '100%', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
+        <MagazzinoSelector onSelect={setSelectedMagazzinoId} />
+        {selectedMagazzinoId && (
+          <InventarioList
+            key={selectedMagazzinoId}
+            magazzinoId={selectedMagazzinoId}
+          />
+        )}
+      </Box>
     </PageContainer>
   );
 };

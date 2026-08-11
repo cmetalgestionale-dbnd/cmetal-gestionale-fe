@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Menuitems from "./MenuItems";
 import { Box, useTheme, GlobalStyles } from "@mui/material";
 import {
@@ -12,10 +12,34 @@ import { IconPoint } from '@tabler/icons-react';
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const renderMenuItems = (items: any, pathDirect: any) => {
+const filterMenuItems = (items: any[], role: string | null) => {
+  if (!role) return [];
+
+  const visibleItems: any[] = [];
+  let pendingSubheader: any = null;
+
+  items.forEach((item) => {
+    if (item.subheader) {
+      pendingSubheader = item;
+      return;
+    }
+
+    const isVisible = !item.roles || item.roles.includes(role);
+    if (!isVisible) return;
+
+    if (pendingSubheader) {
+      visibleItems.push(pendingSubheader);
+      pendingSubheader = null;
+    }
+    visibleItems.push(item);
+  });
+
+  return visibleItems;
+};
+
+const renderMenuItems = (items: any, pathDirect: any, theme: any) => {
   return items.map((item: any) => {
     const Icon = item.icon ? item.icon : IconPoint;
-const theme = useTheme();
 const itemIcon = <Icon stroke={1.5} size="1.3rem" color={theme.palette.text.primary} />;
 
 
@@ -31,7 +55,7 @@ const itemIcon = <Icon stroke={1.5} size="1.3rem" color={theme.palette.text.prim
           icon={itemIcon}
           borderRadius="7px"
         >
-          {renderMenuItems(item.children, pathDirect)}
+          {renderMenuItems(item.children, pathDirect, theme)}
         </Submenu>
       );
     }
@@ -57,6 +81,19 @@ const SidebarItems = () => {
   const pathname = usePathname();
   const pathDirect = pathname;
   const theme = useTheme();
+  const [role, setRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchRole = async () => {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/me`, { credentials: 'include' });
+      if (!res.ok) return;
+      const user = await res.json();
+      setRole(user.role);
+    };
+    fetchRole();
+  }, []);
+
+  const visibleMenuItems = filterMenuItems(Menuitems, role);
 
   return (
     <>
@@ -92,9 +129,9 @@ const SidebarItems = () => {
         <Logo
           img="/images/logos/logo_transparent.png"
           component={Link}
-          href="/private/admin/assegnazioni"
+          href="/private/admin/diario-produzione"
         />
-        {renderMenuItems(Menuitems, pathDirect)}
+        {renderMenuItems(visibleMenuItems, pathDirect, theme)}
       </MUI_Sidebar>
     </>
   );

@@ -15,6 +15,7 @@ const MainWrapper = styled("div")(() => ({
 const PageWrapper = styled("div")(() => ({
   display: "flex",
   flexGrow: 1,
+  minWidth: 0,
   paddingBottom: "60px",
   flexDirection: "column",
   zIndex: 1,
@@ -58,14 +59,17 @@ export default function RootLayout({
         {/* ------------------------------------------- */}
         <Container
           sx={{
-            paddingTop: "20px",
+            pt: { xs: 1.5, sm: 2.5 },
+            px: { xs: 1, sm: 3 },
             maxWidth: "1200px",
+            width: "100%",
+            minWidth: 0,
           }}
         >
           {/* ------------------------------------------- */}
           {/* Page Route */}
           {/* ------------------------------------------- */}
-          <Box sx={{ minHeight: "calc(100vh - 170px)" }}>{children}</Box>
+          <Box sx={{ minHeight: "calc(100vh - 170px)", width: "100%", minWidth: 0 }}>{children}</Box>
           {/* ------------------------------------------- */}
           {/* End Page */}
           {/* ------------------------------------------- */}

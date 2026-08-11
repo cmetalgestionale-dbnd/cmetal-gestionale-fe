@@ -230,19 +230,19 @@ const UserManagement = ({ readOnly = false }: { readOnly?: boolean }) => {
   };
 
   return (
-    <Paper elevation={3} sx={{ p: 3, borderRadius: 3 }}>
+    <Paper elevation={3} sx={{ p: { xs: 1.5, sm: 3 }, borderRadius: { xs: 2, sm: 3 }, width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
       <Typography variant="h5" mb={3} fontWeight={600}>
         Utenze
       </Typography>
 
       {!readOnly && (
-        <>
+        <Box sx={{ display: 'flex', gap: 1.5, mb: 2, flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'stretch', sm: 'center' } }}>
           <Button
             variant="contained"
             size="small"
             onClick={() => handleOpenForm()}
-            sx={{ mb: 2 }}
             disabled={actionLoading}
+            fullWidth={false}
           >
             Aggiungi Utente
           </Button>
@@ -250,17 +250,17 @@ const UserManagement = ({ readOnly = false }: { readOnly?: boolean }) => {
           <Button
             variant="outlined"
             size="small"
-            sx={{ ml: 2, mb: 2 }}
             onClick={() => setDeletedOpen(true)}
             disabled={actionLoading}
+            fullWidth={false}
           >
             Utenze cancellate
           </Button>
-        </>
+        </Box>
       )}
 
-      <TableContainer>
-        <Table>
+      <TableContainer sx={{ display: 'block', overflowX: 'auto', overflowY: 'hidden', width: '100%', maxWidth: '100%', minWidth: 0, WebkitOverflowScrolling: 'touch' }}>
+        <Table sx={{ minWidth: 900 }}>
           <TableHead>
             <TableRow>
               <TableCell>Username</TableCell>

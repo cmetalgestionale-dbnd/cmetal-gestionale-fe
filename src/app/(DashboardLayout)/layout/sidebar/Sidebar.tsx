@@ -85,12 +85,13 @@ const MSidebar = ({
       variant="temporary"
 
       slotProps={{
-        paper: {
-          sx: {
-            boxShadow: (theme) => theme.shadows[8],
-            ...scrollbarStyles,
-          },
-        }
+	        paper: {
+	          sx: {
+	            boxShadow: (theme) => theme.shadows[8],
+	            width: "min(86vw, 320px)",
+	            ...scrollbarStyles,
+	          },
+	        }
       }}
     >
       {/* ------------------------------------------- */}
@@ -110,7 +111,6 @@ const MSidebar = ({
 };
 
 export default MSidebar;
-
 
 
 

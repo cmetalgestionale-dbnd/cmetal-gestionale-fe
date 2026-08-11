@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react';
-import { Grid, Box, Typography } from '@mui/material';
+import { Box, Typography } from '@mui/material';
 import PageContainer from '@/app/(DashboardLayout)/components/container/PageContainer';
 import SettingsComponent from '@/app/(DashboardLayout)/components/impostazioni/SettingsComponent';
 
@@ -60,11 +60,9 @@ const Utenze = () => {
 
   return (
     <PageContainer title="Impostazioni" description="Impostazioni">
-      <Grid container spacing={3}>
-        <Grid>
-          <SettingsComponent />
-        </Grid>
-      </Grid>
+      <Box sx={{ width: '100%', minWidth: 0 }}>
+        <SettingsComponent />
+      </Box>
     </PageContainer>
   );
 };

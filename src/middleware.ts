@@ -47,17 +47,8 @@ export async function middleware(request: NextRequest) {
       (payload as Record<string, any>)?.ruolo;
     const ruolo = typeof ruoloRaw === 'string' ? ruoloRaw.toUpperCase() : '';
 
-    // Routing in base al ruolo
     if (isRoot) {
-      if (ruolo === 'ADMIN') {
-        return NextResponse.redirect(new URL('/private/admin/assegnazioni', request.url));
-      }
-      if (ruolo === 'SUPERVISORE') {
-        return NextResponse.redirect(new URL('/private/admin/assegnazioni', request.url));
-      }
-      if (ruolo === 'DIPENDENTE') {
-        return NextResponse.redirect(new URL('/private/admin/assegnazioni', request.url));
-      }
+      return NextResponse.redirect(new URL('/private/admin/diario-produzione', request.url));
     }
 
     // Se è un utente con ruolo valido → può navigare

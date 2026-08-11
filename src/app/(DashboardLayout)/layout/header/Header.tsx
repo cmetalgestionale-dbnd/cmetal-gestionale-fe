@@ -66,22 +66,22 @@ const Header = ({toggleMobileSidebar}: ItemType) => {
         <Box flexGrow={1} />
 {/* Stato WebSocket */}
 {(
-  <Box
-    sx={{
-      px: 2,
-      py: 0.5,
-      borderRadius: 1,
-      bgcolor: wsConnesso ? 'success.main' : 'error.main',
-      color: 'common.white',
-      fontWeight: 'bold',
-      fontSize: '0.875rem',
-      whiteSpace: 'nowrap',
-    }}
-  >
+	    <Box
+	    sx={{
+	      px: { xs: 1, sm: 2 },
+	      py: 0.5,
+	      borderRadius: 1,
+	      bgcolor: wsConnesso ? 'success.main' : 'error.main',
+	      color: 'common.white',
+	      fontWeight: 'bold',
+	      fontSize: { xs: '0.7rem', sm: '0.875rem' },
+	      whiteSpace: 'nowrap',
+	    }}
+	  >
     {wsConnesso ? 'Connesso' : 'Riconnessione'}
   </Box>
 )}
-        <Stack spacing={1} direction="row" alignItems="center">
+	        <Stack spacing={{ xs: 0.5, sm: 1 }} direction="row" alignItems="center">
           {/* <Button variant="contained" component={Link} href="/authentication/login"   disableElevation color="primary" >
             Login
           </Button> */}

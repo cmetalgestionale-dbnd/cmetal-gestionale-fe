@@ -187,7 +187,7 @@ const SettingsComponent = ({ readOnly = false }: { readOnly?: boolean }) => {
   };
 
   return (
-    <Paper elevation={3} sx={{ p: 3, borderRadius: 3 }}>
+    <Paper elevation={3} sx={{ p: { xs: 1.5, sm: 3 }, borderRadius: { xs: 2, sm: 3 }, width: '100%', boxSizing: 'border-box' }}>
       <Typography variant="h5" mb={3} fontWeight={600}>
         Impostazioni
       </Typography>
@@ -317,7 +317,7 @@ const SettingsComponent = ({ readOnly = false }: { readOnly?: boolean }) => {
             <>
               <Typography mt={3} mb={1}>Seleziona cosa vuoi pulire:</Typography>
               <FormGroup>
-                {['assegnazioni', 'commesse', 'clienti', 'utenti', 'magazzino'].map((ent) => (
+                {['commesse', 'utenti', 'magazzino'].map((ent) => (
                   <FormControlLabel
                     key={ent}
                     control={
@@ -345,11 +345,9 @@ const SettingsComponent = ({ readOnly = false }: { readOnly?: boolean }) => {
                 Confermi la pulizia delle seguenti entità?
               </Typography>
               <ul>
-                {selectedEntities.includes('assegnazioni') && <li>🗑️ Assegnazioni precedenti alla data odierna e relativi allegati</li>}
-                {selectedEntities.includes('commesse') && <li>📄 Commesse eliminate e relative assegnazioni e PDF associati</li>}
-                {selectedEntities.includes('clienti') && <li>👥 Clienti eliminati e relative assegnazioni</li>}
-                {selectedEntities.includes('utenti') && <li>🔑 Utenze eliminate e relative assegnazioni</li>}
-                {selectedEntities.includes('magazzino') && <li>📦 Storico movimenti di magazzino</li>}
+                {selectedEntities.includes('commesse') && <li>Commesse eliminate e PDF associati</li>}
+                {selectedEntities.includes('utenti') && <li>Utenze eliminate</li>}
+                {selectedEntities.includes('magazzino') && <li>Storico movimenti di magazzino</li>}
               </ul>
             </Alert>
           )}

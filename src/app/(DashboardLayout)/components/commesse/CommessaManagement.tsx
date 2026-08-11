@@ -7,15 +7,18 @@ import React, { useEffect, useState } from 'react';
 import {
   Box, Paper, Typography, Table, TableHead, TableRow, TableCell,
   TableBody, IconButton, Button, TableContainer, TextField,
-  Dialog, DialogTitle, DialogContent, DialogActions
+  Dialog, DialogTitle, DialogContent, DialogActions, List, ListItem, ListItemButton,
+  ListItemText, useMediaQuery, useTheme
 } from '@mui/material';
-import { Delete, Edit, Search } from '@mui/icons-material';
+import { Delete, Edit, PictureAsPdf, Search } from '@mui/icons-material';
 
 interface Commessa {
   id: number;
   codice: string;
   descrizione?: string;
+  allegati?: Allegato[];
   pdfAllegato?: {
+    id?: number;
     nomeFile: string;
     storagePath: string;
   };
@@ -23,16 +26,26 @@ interface Commessa {
   dataCreazione?: string;
 }
 
+interface Allegato {
+  id: number;
+  nomeFile: string;
+  storagePath: string;
+}
+
 const CommessaManagement = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [commesse, setCommesse] = useState<Commessa[]>([]);
   const [deletedCommesse, setDeletedCommesse] = useState<Commessa[]>([]);
   const [open, setOpen] = useState(false);
   const [editingCommessa, setEditingCommessa] = useState<Commessa | null>(null);
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [removeFileConfirm, setRemoveFileConfirm] = useState(false);
+  const [removeAllegatoIds, setRemoveAllegatoIds] = useState<number[]>([]);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [commessaToDelete, setCommessaToDelete] = useState<Commessa | null>(null);
   const [deletedOpen, setDeletedOpen] = useState(false);
+  const [allegatiCommessa, setAllegatiCommessa] = useState<Commessa | null>(null);
 
   const [formData, setFormData] = useState({
     codice: '',
@@ -92,16 +105,18 @@ const fetchDeletedCommesse = async () => {
       setEditingCommessa(null);
       setFormData({ codice: '', descrizione: '', dataCreazione: '' });
     }
-    setFile(null);
+    setFiles([]);
     setRemoveFileConfirm(false);
+    setRemoveAllegatoIds([]);
     setOpen(true);
   };
 
   const handleCloseForm = () => {
     setOpen(false);
     setEditingCommessa(null);
-    setFile(null);
+    setFiles([]);
     setRemoveFileConfirm(false);
+    setRemoveAllegatoIds([]);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -111,21 +126,28 @@ const fetchDeletedCommesse = async () => {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      const selectedFile = e.target.files[0];
+      const selectedFiles = Array.from(e.target.files);
 
-      if (selectedFile.type !== 'application/pdf') {
+      if (selectedFiles.some(selectedFile => selectedFile.type !== 'application/pdf')) {
         alert('Il file deve essere un PDF');
         e.target.value = '';
         return;
       }
 
-      if (selectedFile.size > 2 * 1024 * 1024) {
-        alert('Il file non può superare 2 MB');
+      if (selectedFiles.some(selectedFile => selectedFile.size > 2 * 1024 * 1024)) {
+        alert('Ogni file non può superare 2 MB; il backend proverà a comprimerlo entro 1 MB');
         e.target.value = '';
         return;
       }
 
-      setFile(selectedFile);
+      const currentCount = (editingCommessa?.allegati?.length || (editingCommessa?.pdfAllegato ? 1 : 0)) - removeAllegatoIds.length;
+      if (currentCount + selectedFiles.length > 10) {
+        alert('Puoi allegare al massimo 10 PDF per commessa');
+        e.target.value = '';
+        return;
+      }
+
+      setFiles(selectedFiles);
     }
   };
 
@@ -133,13 +155,20 @@ const fetchDeletedCommesse = async () => {
     setRemoveFileConfirm(true);
   };
 
+  const toggleRemoveAllegato = (id: number) => {
+    setRemoveAllegatoIds((current) =>
+      current.includes(id) ? current.filter(existingId => existingId !== id) : [...current, id]
+    );
+  };
+
   const handleSubmit = async () => {
     setActionLoading(true);
     try {
       const form = new FormData();
       form.append('commessa', new Blob([JSON.stringify(formData)], { type: 'application/json' }));
-      if (file) form.append('file', file);
+      files.forEach(selectedFile => form.append('file', selectedFile));
       if (removeFileConfirm) form.append('removeFile', 'true');
+      removeAllegatoIds.forEach(id => form.append('removeAllegatoIds', String(id)));
 
       const url = editingCommessa
         ? `${backendUrl}/api/commesse/${editingCommessa.id}`
@@ -203,12 +232,48 @@ const fetchDeletedCommesse = async () => {
     c.codice.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  return (
-    <Paper elevation={3} sx={{ p: 3, borderRadius: 3 }}>
-      <Typography variant="h5" mb={3} fontWeight={600}>Commesse</Typography>
+  const getAllegati = (c: Commessa | null) => {
+    if (!c) return [];
+    if (c.allegati && c.allegati.length > 0) {
+      return c.allegati.map((allegato, index) => ({
+        id: allegato.id,
+        label: allegato.nomeFile || `PDF ${index + 1}`,
+        href: `${backendUrl}/api/commesse/${c.id}/allegati/${allegato.id}`,
+      }));
+    }
+    if (c.pdfAllegato) {
+      return [{
+        id: c.pdfAllegato.id || 0,
+        label: c.pdfAllegato.nomeFile || 'PDF',
+        href: `${backendUrl}/api/commesse/${c.id}/allegato`,
+      }];
+    }
+    return [];
+  };
 
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-        <Button variant="contained" size="small" onClick={() => handleOpenForm()} disabled={actionLoading}>
+  const renderAllegati = (c: Commessa) => {
+    const allegati = getAllegati(c);
+    if (allegati.length === 0) return <>-</>;
+
+    return (
+      <Button
+        size="small"
+        variant="outlined"
+        startIcon={<PictureAsPdf fontSize="small" />}
+        onClick={() => setAllegatiCommessa(c)}
+        disabled={actionLoading}
+      >
+        Allegati PDF ({allegati.length})
+      </Button>
+    );
+  };
+
+  return (
+    <Paper elevation={3} sx={{ p: { xs: 1.5, sm: 3 }, borderRadius: { xs: 2, sm: 3 }, width: '100%', boxSizing: 'border-box' }}>
+      <Typography variant={isMobile ? 'h6' : 'h5'} mb={2} fontWeight={600}>Commesse</Typography>
+
+      <Box sx={{ display: 'flex', alignItems: { xs: 'stretch', sm: 'center' }, gap: 1.5, mb: 2, flexDirection: { xs: 'column', sm: 'row' }, flexWrap: 'wrap' }}>
+        <Button variant="contained" size="small" onClick={() => handleOpenForm()} disabled={actionLoading} fullWidth={isMobile}>
           Aggiungi Commessa
         </Button>
 
@@ -221,11 +286,12 @@ const fetchDeletedCommesse = async () => {
 }}
 
           disabled={actionLoading}
+          fullWidth={isMobile}
         >
           Commesse cancellate
         </Button>
 
-        <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box sx={{ ml: { xs: 0, sm: 'auto' }, display: 'flex', alignItems: 'center', gap: 1 }}>
           <Search fontSize="small" />
           <TextField
             label="Cerca per codice"
@@ -233,61 +299,103 @@ const fetchDeletedCommesse = async () => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             disabled={actionLoading}
+            fullWidth={isMobile}
           />
         </Box>
       </Box>
 
-      <TableContainer>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Codice</TableCell>
-              <TableCell>Descrizione</TableCell>
-              <TableCell>Allegato</TableCell>
-              <TableCell>Azioni</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredCommesse.map(c => (
-              <TableRow key={c.id}>
-                <TableCell>{c.codice}</TableCell>
-                <TableCell>{c.descrizione}</TableCell>
-                <TableCell>
-                  {c.pdfAllegato ? (
-                    <a
-                      href={`${backendUrl}/api/commesse/${c.id}/allegato`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      PDF
-                    </a>
-                  ) : '-'}
-                </TableCell>
-                <TableCell>
-                  <IconButton size="small" onClick={() => handleOpenForm(c)} disabled={actionLoading}>
-                    <Edit fontSize="small" />
-                  </IconButton>
-                  <IconButton size="small" onClick={() => handleDeleteClick(c)} disabled={actionLoading}>
-                    <Delete fontSize="small" />
-                  </IconButton>
-                </TableCell>
+      {isMobile ? (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25, width: '100%' }}>
+          {filteredCommesse.map(c => (
+            <Paper key={c.id} variant="outlined" sx={{ p: 1.5, borderRadius: 2, width: '100%', boxSizing: 'border-box' }}>
+              <Typography fontWeight={700} sx={{ overflowWrap: 'anywhere' }}>{c.codice}</Typography>
+              <Typography variant="body2" sx={{ mt: 0.5, overflowWrap: 'anywhere' }}>{c.descrizione || '-'}</Typography>
+              <Box sx={{ mt: 1 }}>{renderAllegati(c)}</Box>
+              <Box sx={{ display: 'flex', gap: 0.5, mt: 1, justifyContent: 'flex-end' }}>
+                <IconButton size="small" onClick={() => handleOpenForm(c)} disabled={actionLoading}>
+                  <Edit fontSize="small" />
+                </IconButton>
+                <IconButton size="small" onClick={() => handleDeleteClick(c)} disabled={actionLoading}>
+                  <Delete fontSize="small" />
+                </IconButton>
+              </Box>
+            </Paper>
+          ))}
+        </Box>
+      ) : (
+        <TableContainer sx={{ display: 'block', overflowX: 'auto', overflowY: 'hidden', width: '100%', maxWidth: '100%', minWidth: 0, WebkitOverflowScrolling: 'touch' }}>
+          <Table sx={{ minWidth: 720 }}>
+            <TableHead>
+              <TableRow>
+                <TableCell>Codice</TableCell>
+                <TableCell>Descrizione</TableCell>
+                <TableCell>Allegati</TableCell>
+                <TableCell>Azioni</TableCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+            </TableHead>
+            <TableBody>
+              {filteredCommesse.map(c => (
+                <TableRow key={c.id}>
+                  <TableCell>{c.codice}</TableCell>
+                  <TableCell>{c.descrizione}</TableCell>
+                  <TableCell>{renderAllegati(c)}</TableCell>
+                  <TableCell>
+                    <IconButton size="small" onClick={() => handleOpenForm(c)} disabled={actionLoading}>
+                      <Edit fontSize="small" />
+                    </IconButton>
+                    <IconButton size="small" onClick={() => handleDeleteClick(c)} disabled={actionLoading}>
+                      <Delete fontSize="small" />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
-      <Dialog open={open} onClose={handleCloseForm} fullWidth maxWidth="sm">
+      <Dialog open={open} onClose={handleCloseForm} fullWidth maxWidth="sm" fullScreen={isMobile}>
         <DialogTitle>{editingCommessa ? 'Modifica Commessa' : 'Nuova Commessa'}</DialogTitle>
 
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1, px: { xs: 2, sm: 3 } }}>
           <TextField label="Codice" name="codice" value={formData.codice} onChange={handleChange} size="small" fullWidth disabled={actionLoading} />
           <TextField label="Descrizione" name="descrizione" value={formData.descrizione} onChange={handleChange} size="small" fullWidth disabled={actionLoading} />
-          <input type="file" accept="application/pdf" onChange={handleFileChange} disabled={actionLoading} />
+	          <input type="file" accept="application/pdf" multiple onChange={handleFileChange} disabled={actionLoading} />
+	          {files.length > 0 && (
+	            <Typography variant="body2">
+	              Nuovi file selezionati: {files.map(selectedFile => selectedFile.name).join(', ')}
+	            </Typography>
+	          )}
 
-          {editingCommessa?.pdfAllegato && !removeFileConfirm && (
-            <Box>
-              Allegato attuale: {editingCommessa.pdfAllegato.nomeFile}{' '}
+	          {editingCommessa?.allegati && editingCommessa.allegati.length > 0 && (
+	            <Box>
+	              <Typography variant="subtitle2">Allegati attuali</Typography>
+	              {editingCommessa.allegati.map((allegato, index) => (
+                <Box key={allegato.id} sx={{ display: 'flex', alignItems: { xs: 'stretch', sm: 'center' }, gap: 1, mt: 1, flexDirection: { xs: 'column', sm: 'row' } }}>
+	                  <a
+	                    href={`${backendUrl}/api/commesse/${editingCommessa.id}/allegati/${allegato.id}`}
+	                    target="_blank"
+	                    rel="noopener noreferrer"
+	                  >
+	                    PDF {index + 1} - {allegato.nomeFile}
+	                  </a>
+	                  <Button
+	                    variant="outlined"
+	                    size="small"
+	                    color={removeAllegatoIds.includes(allegato.id) ? 'warning' : 'error'}
+	                    onClick={() => toggleRemoveAllegato(allegato.id)}
+	                    disabled={actionLoading}
+	                  >
+	                    {removeAllegatoIds.includes(allegato.id) ? 'Annulla rimozione' : 'Rimuovi'}
+	                  </Button>
+	                </Box>
+	              ))}
+	            </Box>
+	          )}
+
+	          {editingCommessa?.pdfAllegato && (!editingCommessa.allegati || editingCommessa.allegati.length === 0) && !removeFileConfirm && (
+	            <Box>
+	              Allegato attuale: {editingCommessa.pdfAllegato.nomeFile}{' '}
               <Button variant="outlined" size="small" color="error" onClick={handleRemoveFile} disabled={actionLoading}>
                 Rimuovi
               </Button>
@@ -295,7 +403,7 @@ const fetchDeletedCommesse = async () => {
           )}
         </DialogContent>
 
-        <DialogActions>
+        <DialogActions sx={{ px: { xs: 2, sm: 3 }, flexDirection: { xs: 'column', sm: 'row' }, alignItems: 'stretch' }}>
           <Button onClick={handleCloseForm} size="small" disabled={actionLoading}>Annulla</Button>
           <Button onClick={handleSubmit} size="small" variant="contained" disabled={actionLoading}>Salva</Button>
         </DialogActions>
@@ -309,6 +417,29 @@ const fetchDeletedCommesse = async () => {
         <DialogActions>
           <Button onClick={() => setConfirmDeleteOpen(false)} size="small" disabled={actionLoading}>Annulla</Button>
           <Button onClick={handleConfirmDelete} size="small" color="error" variant="contained" disabled={actionLoading}>Elimina</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={Boolean(allegatiCommessa)} onClose={() => setAllegatiCommessa(null)} fullWidth maxWidth="sm" fullScreen={isMobile}>
+        <DialogTitle>Allegati PDF - {allegatiCommessa?.codice}</DialogTitle>
+        <DialogContent sx={{ px: { xs: 2, sm: 3 } }}>
+          <List disablePadding>
+            {getAllegati(allegatiCommessa).map((allegato, index) => (
+              <ListItem key={`${allegato.id}-${index}`} disablePadding divider>
+                <ListItemButton component="a" href={allegato.href} target="_blank" rel="noopener noreferrer">
+                  <ListItemText
+                    primary={`PDF ${index + 1}`}
+                    secondary={allegato.label}
+                    primaryTypographyProps={{ fontWeight: 600 }}
+                    secondaryTypographyProps={{ sx: { overflowWrap: 'anywhere' } }}
+                  />
+                </ListItemButton>
+              </ListItem>
+            ))}
+          </List>
+        </DialogContent>
+        <DialogActions sx={{ px: { xs: 2, sm: 3 } }}>
+          <Button onClick={() => setAllegatiCommessa(null)} disabled={actionLoading}>Chiudi</Button>
         </DialogActions>
       </Dialog>
 
